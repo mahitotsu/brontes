@@ -1,0 +1,10 @@
+services:
+  api:
+    build: 
+      context: ./
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
