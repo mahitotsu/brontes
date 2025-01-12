@@ -41,6 +41,8 @@ export class BrontesStack extends Stack {
         const cluster = new Cluster(vpc, 'ApplicationCluster', {
             vpc, enableFargateCapacityProviders: true,
         });
+        cluster.addDefaultCapacityProviderStrategy([{ capacityProvider: 'FARGATE_SPOT', weight: 2 }]);
+
         const service = new FargateService(cluster, 'ApplicationService', {
             taskDefinition, cluster, vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS }, assignPublicIp: false,
             capacityProviderStrategies: [{ capacityProvider: 'FARGATE_SPOT', weight: 1 }],
