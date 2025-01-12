@@ -2,6 +2,7 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-l
 import { IpProtocol, SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
 import { Cluster, ContainerImage, FargateService, FargateTaskDefinition, LogDriver } from "aws-cdk-lib/aws-ecs";
 import { ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 
@@ -10,14 +11,24 @@ export class BrontesStack extends Stack {
     constructor(scope: Construct, id: string, props: StackProps) {
         super(scope, id, props);
 
+        const env = props.env;
+        const dsqlClusterIds = {
+            'us-east-1': '4iabtwnq2j55iez4j4bkykghgm',
+            'us-east-2': 's4abtwnq2jebk7aj6vhlsb2coi'
+        };
+
         const maxAzs = 2;
         const listenerPort = 80;
         const containerPort = 8080;
+        const dsqlEndpoints = Object.entries(dsqlClusterIds).map(entry => `${entry[1]}.dsql.${entry[0]}.on.aws`);
 
         const taskDefinition = new FargateTaskDefinition(this, 'TaskDefinition', { cpu: 512, memoryLimitMiB: 4096 });
         taskDefinition.addContainer('application', {
             image: ContainerImage.fromAsset(`${__dirname}/../../brontes-api`),
             portMappings: [{ containerPort }],
+            environment: {
+                DSQL_ENDPOINTS: dsqlEndpoints.join(',')
+            },
             logging: LogDriver.awsLogs({
                 streamPrefix: 'application',
                 logGroup: new LogGroup(this, 'ApplicationLogGroup', {
@@ -26,6 +37,11 @@ export class BrontesStack extends Stack {
                 })
             })
         });
+        taskDefinition.addToTaskRolePolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['dsql:DbConnectAdmin'],
+            resources: Object.entries(dsqlClusterIds).map(entry => `arn:aws:dsql:${entry[0]}:${env?.account}:cluster/${entry[1]}`)
+        }));
 
         const vpc = new Vpc(this, 'Vpc', {
             ipProtocol: IpProtocol.DUAL_STACK,
