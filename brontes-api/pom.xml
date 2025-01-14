@@ -18,6 +18,7 @@
         <java.version>21</java.version>
         <spring-boot.build-image.builder>paketobuildpacks/builder-jammy-base</spring-boot.build-image.builder>
         <aws.java.sdk.version>2.29.50</aws.java.sdk.version>
+        <aws.serverless.java.container.version>2.0.1</aws.serverless.java.container.version>
     </properties>
 
     <dependencyManagement>
@@ -46,6 +47,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
+        <!-- serverless container -->
+        <dependency>
+            <groupId>com.amazonaws.serverless</groupId>
+            <artifactId>aws-serverless-java-container-springboot3</artifactId>
+            <version>${aws.serverless.java.container.version}</version>
+        </dependency>
         <!-- aws java sdk -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
@@ -65,6 +72,19 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>go-offline</goal>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -1,9 +1,7 @@
-FROM brontes-api:0.0.1-SNAPSHOT
+FROM public.ecr.aws/lambda/java:21
 
-USER root
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+COPY target/classes ${LAMBDA_TASK_ROOT}
+COPY target/dependency/* ${LAMBDA_TASK_ROOT}/lib/
+RUN rm ${LAMBDA_TASK_ROOT}/lib/commons-logging-*.jar
 
-USER cnb
+CMD ["com.mahitotsu.brontes.api.Handler::handleRequest"]

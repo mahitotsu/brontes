@@ -19,4 +19,5 @@ AWS_REGION="us-east-1"
 export DSQL_ENDPOINTS
 export AWS_REGION
 
+echo $PUBLIC_IP
 mvn spring-boot:run
