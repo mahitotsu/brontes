@@ -16,7 +16,7 @@ import org.springframework.jdbc.datasource.AbstractDataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
 
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dsql.DsqlUtilities;
 
@@ -30,11 +30,11 @@ public class DBConfiguration {
     private String region;
 
     @Bean
-    public DataSource dataSource() {
+    public DataSource dataSource(final AwsCredentialsProvider awsCredentialsProvider) {
 
         final Region region = Region.of(this.region);
         final DsqlUtilities dsqlUtilities = DsqlUtilities.builder().region(region)
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(awsCredentialsProvider)
                 .build();
 
         final String dsqlEndpoint = Arrays.stream(this.dsqlEndpoints).filter(endpoint -> endpoint.contains(this.region))
@@ -68,8 +68,9 @@ public class DBConfiguration {
         hikariCp.setAutoCommit(false);
         hikariCp.setDataSource(dsqlDS);
         hikariCp.setIdleTimeout(0);
+        hikariCp.setMaximumPoolSize(1);
 
         return hikariCp;
     }
-    
+
 }

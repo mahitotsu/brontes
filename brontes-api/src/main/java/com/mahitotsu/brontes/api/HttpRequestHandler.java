@@ -11,7 +11,7 @@ import com.amazonaws.serverless.proxy.spring.SpringBootLambdaContainerHandler;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 
-public class Handler implements RequestStreamHandler {
+public class HttpRequestHandler implements RequestStreamHandler {
 
     private static SpringBootLambdaContainerHandler<HttpApiV2ProxyRequest, AwsProxyResponse> handler;
     static {
@@ -26,6 +26,6 @@ public class Handler implements RequestStreamHandler {
     @Override
     public void handleRequest(final InputStream inputStream, final OutputStream outputStream, final Context context)
             throws IOException {
-        Handler.handler.proxyStream(inputStream, outputStream, context);
+        HttpRequestHandler.handler.proxyStream(inputStream, outputStream, context);
     }
 }
