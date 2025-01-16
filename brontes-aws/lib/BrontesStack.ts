@@ -1,7 +1,11 @@
-import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { Pipe } from "@aws-cdk/aws-pipes-alpha";
+import { DynamoDBSource, DynamoDBStartingPosition } from "@aws-cdk/aws-pipes-sources-alpha";
+import { ApiDestinationTarget } from "@aws-cdk/aws-pipes-targets-alpha";
+import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, StackProps } from "aws-cdk-lib";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { AttributeType, BillingMode, StreamViewType, Table } from "aws-cdk-lib/aws-dynamodb";
+import { ApiDestination, Authorization, Connection } from "aws-cdk-lib/aws-events";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { AssetCode, Function, FunctionUrlAuthType, InvokeMode, Runtime } from "aws-cdk-lib/aws-lambda";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
@@ -25,7 +29,7 @@ export class BrontesStack extends Stack {
             partitionKey: { name: 'group', type: AttributeType.STRING },
             sortKey: { name: 'request-id', type: AttributeType.STRING },
             billingMode: BillingMode.PAY_PER_REQUEST,
-            // stream: StreamViewType.NEW_IMAGE,
+            stream: StreamViewType.NEW_IMAGE,
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
@@ -56,6 +60,15 @@ export class BrontesStack extends Stack {
         const endpoint = httpRequestHandler.addFunctionUrl({
             authType: FunctionUrlAuthType.AWS_IAM,
             invokeMode: InvokeMode.BUFFERED,
+        });
+        const pipe = new Pipe(this, 'Pipe', {
+            source: new DynamoDBSource(httpRequestTable, { startingPosition: DynamoDBStartingPosition.LATEST }),
+            target: new ApiDestinationTarget(new ApiDestination(endpoint, 'Destination', {
+                connection: new Connection(endpoint, 'Connection', {
+                    authorization: Authorization.basic('username', SecretValue.unsafePlainText('password'))
+                }),
+                endpoint: endpoint.url,
+            }), {}),
         });
 
         const apiGww = new HttpApi(this, 'HttpApi', {
