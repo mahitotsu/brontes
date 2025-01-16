@@ -1,4 +1,0 @@
-management:
-  health:
-    diskspace:
-      enabled: false

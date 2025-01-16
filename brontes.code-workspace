@@ -2,13 +2,7 @@
     "folders": [
         {
             "path": "."
-        },
-        {
-            "path": "brontes-aws"
-        },
-        {
-            "path": "brontes-api"
-        },
+        }
     ],
     "settings": {
         "java.compile.nullAnalysis.mode": "automatic",
