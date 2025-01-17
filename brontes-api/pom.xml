@@ -134,6 +134,7 @@
                     <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
                     <systemPropertyVariables>
                         <server.port>${test.server.port}</server.port>
+                        <properties>value</properties>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -145,21 +146,13 @@
                         <id>integration-test</id>
                         <goals>
                             <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                         <configuration>
                             <includes>
                                 <include>**/IT*.java</include>
                             </includes>
-                            <systemPropertyVariables>
-                                <server.port>${test.server.port}</server.port>
-                            </systemPropertyVariables>
                         </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>
