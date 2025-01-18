@@ -2,9 +2,12 @@ package com.mahitotsu.brontes.api;
 
 import org.junit.jupiter.api.Test;
 
-public class HealthCheckIT {
+import io.restassured.RestAssured;
+
+public class HealthCheckIT extends RestApiTest {
 
     @Test
-    public void test() {
+    public void testHealth() {
+        RestAssured.given().when().get("/actuator/health").then().statusCode(200);
     }
 }

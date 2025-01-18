@@ -14,6 +14,11 @@
     <artifactId>brontes-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
+    <properties>
+        <java.version>21</java.version>
+        <restassured.version>5.5.0</restassured.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -26,6 +31,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${restassured.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -109,18 +120,49 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>pre-integration-test</id>
+                        <id>build-image</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build-image-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.45.1</version>
+                <configuration>
+                    <showLogs>true</showLogs>
+                    <images>
+                        <image>
+                            <name>${project.artifactId}:${project.version}</name>
+                            <run>
+                                <ports>
+                                    <port>${test.server.port}:8080</port>
+                                </ports>
+                                <wait>
+                                    <http>
+                                        <url>http://localhost:${test.server.port}/actuator/health</url>
+                                        <method>GET</method>
+                                        <status>200</status>
+                                    </http>
+                                </wait>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start-docker-container</id>
+                        <phase>pre-integration-test</phase>
                         <goals>
                             <goal>start</goal>
                         </goals>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <server.port>${test.server.port}</server.port>
-                            </systemPropertyVariables>
-                        </configuration>
                     </execution>
                     <execution>
-                        <id>post-integration-test</id>
+                        <id>stop-docker-container</id>
+                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>stop</goal>
                         </goals>
@@ -134,25 +176,36 @@
                     <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
                     <systemPropertyVariables>
                         <server.port>${test.server.port}</server.port>
-                        <properties>value</properties>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <server.port>${test.server.port}</server.port>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <id>integration-test</id>
                         <goals>
                             <goal>integration-test</goal>
-                            <goal>verify</goal>
                         </goals>
+                        <phase>integration-test</phase>
                         <configuration>
                             <includes>
                                 <include>**/IT*.java</include>
                             </includes>
                         </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
