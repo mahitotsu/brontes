@@ -16,8 +16,22 @@
 
     <properties>
         <java.version>21</java.version>
+        <aws.java.sdk.version>2.30.2</aws.java.sdk.version>
+        <postgresql.version>42.7.5</postgresql.version>
         <restassured.version>5.5.0</restassured.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.java.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -27,6 +41,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>dsql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -52,6 +79,53 @@
                         <goals>
                             <goal>properties</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.mozilla</groupId>
+                        <artifactId>rhino</artifactId>
+                        <version>1.8.0</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <exportAntProperties>true</exportAntProperties>
+                            <target>
+                                <exec executable="aws" outputproperty="sts.output">
+                                    <arg value="sts" />
+                                    <arg value="assume-role" />
+                                    <arg value="--role-arn" />
+                                    <arg value="arn:aws:iam::346929044083:role/Developer" />
+                                    <arg value="--role-session-name" />
+                                    <arg value="maven-session" />
+                                </exec>
+                                <exec executable="jq" inputstring="${sts.output}"
+                                    outputproperty="aws.accessKeyId">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.AccessKeyId" />
+                                </exec>
+                                <exec executable="jq" inputstring="${sts.output}"
+                                    outputproperty="aws.secretAccessKey">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.SecretAccessKey" />
+                                </exec>
+                                <exec executable="jq" inputstring="${sts.output}"
+                                    outputproperty="aws.sessionToken">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.SessionToken" />
+                                </exec>
+                            </target>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -177,6 +251,12 @@
                     <systemPropertyVariables>
                         <server.port>${test.server.port}</server.port>
                     </systemPropertyVariables>
+                    <environmentVariables>
+                        <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
+                        <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
+                        <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
+                        <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -186,6 +266,9 @@
                     <systemPropertyVariables>
                         <server.port>${test.server.port}</server.port>
                     </systemPropertyVariables>
+                    <environmentVariables>
+                        <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
+                    </environmentVariables>
                 </configuration>
                 <executions>
                     <execution>
