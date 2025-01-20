@@ -85,13 +85,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.mozilla</groupId>
-                        <artifactId>rhino</artifactId>
-                        <version>1.8.0</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <goals>
@@ -123,6 +116,13 @@
                                     outputproperty="aws.sessionToken">
                                     <arg value="-r" />
                                     <arg value=".Credentials.SessionToken" />
+                                </exec>
+                                <exec executable="aws">
+                                    <arg value="sts" />
+                                    <arg value="get-caller-identity" />
+                                    <env key="AWS_ACCESS_KEY_ID" value="${aws.accessKeyId}" />
+                                    <env key="AWS_SECRET_ACCESS_KEY" value="${aws.secretAccessKey}" />
+                                    <env key="AWS_SESSION_TOKEN" value="${aws.sessionToken}" />
                                 </exec>
                             </target>
                         </configuration>
@@ -222,6 +222,12 @@
                                         <status>200</status>
                                     </http>
                                 </wait>
+                                <env>
+                                    <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
+                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
+                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
+                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
+                                </env>
                             </run>
                         </image>
                     </images>
@@ -267,7 +273,6 @@
                         <server.port>${test.server.port}</server.port>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
                     </environmentVariables>
                 </configuration>
                 <executions>
