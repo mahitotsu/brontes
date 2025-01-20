@@ -94,11 +94,19 @@
                         <configuration>
                             <exportAntProperties>true</exportAntProperties>
                             <target>
+                                <exec executable="aws" outputproperty="cf.outputs">
+                                    <arg value="cloudformation" />
+                                    <arg value="describe-stacks" />
+                                    <arg value="--stack-name" />
+                                    <arg value="--region" />
+                                    <arg value="us-east-1" />
+                                    <arg value="BrontesStack" />
+                                </exec>
                                 <exec executable="aws" outputproperty="sts.output">
                                     <arg value="sts" />
                                     <arg value="assume-role" />
                                     <arg value="--role-arn" />
-                                    <arg value="arn:aws:iam::346929044083:role/Developer" />
+                                    <arg value="arn:aws:iam::346929044083:role/BrontesStack-DeveloperRole58EC5A58-YsfIImbToa0M" />
                                     <arg value="--role-session-name" />
                                     <arg value="maven-session" />
                                 </exec>
