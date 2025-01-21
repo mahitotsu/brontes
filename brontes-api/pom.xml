@@ -102,11 +102,21 @@
                                     <arg value="us-east-1" />
                                     <arg value="BrontesStack" />
                                 </exec>
+                                <exec executable="jq" inputstring="${cf.outputs}"
+                                    outputproperty="iam.developer">
+                                    <arg value="-r" />
+                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DeveloperRoleArn&quot;) | .OutputValue" />
+                                </exec>
+                                <exec executable="jq" inputstring="${cf.outputs}"
+                                    outputproperty="dsql.endpoint">
+                                    <arg value="-r" />
+                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DsqlEndpoint&quot;) | .OutputValue" />
+                                </exec>
                                 <exec executable="aws" outputproperty="sts.output">
                                     <arg value="sts" />
                                     <arg value="assume-role" />
                                     <arg value="--role-arn" />
-                                    <arg value="arn:aws:iam::346929044083:role/BrontesStack-DeveloperRole58EC5A58-YsfIImbToa0M" />
+                                    <arg value="${iam.developer}" />
                                     <arg value="--role-session-name" />
                                     <arg value="maven-session" />
                                 </exec>
@@ -229,9 +239,10 @@
                                         <method>GET</method>
                                         <status>200</status>
                                     </http>
+                                    <time>60000</time>
                                 </wait>
                                 <env>
-                                    <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
+                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
                                     <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
                                     <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
                                     <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
@@ -266,7 +277,7 @@
                         <server.port>${test.server.port}</server.port>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DSQL_ENDPOINT>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</DSQL_ENDPOINT>
+                        <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
                         <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
                         <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
                         <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
