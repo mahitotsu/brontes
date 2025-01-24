@@ -9,8 +9,7 @@ public abstract class RestApiTest {
 
     @BeforeAll
     public static void setup() {
-        RestAssured.baseURI = "http://localhost";
-        RestAssured.port = Integer.parseInt(System.getProperty("server.port"));
+        RestAssured.baseURI = System.getenv("NGROK_URL");
         RestAssured.requestSpecification = new RequestSpecBuilder().addHeader("Content-Type", "application/json")
                 .build();
     }

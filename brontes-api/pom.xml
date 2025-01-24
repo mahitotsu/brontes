@@ -95,10 +95,90 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-integration-test-source</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/it/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>reserve-test-server-port</id>
+                        <goals>
+                            <goal>reserve-network-port</goal>
+                        </goals>
+                        <phase>process-test-resources</phase>
+                        <configuration>
+                            <portNames>
+                                <portName>test.server.port</portName>
+                            </portNames>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.45.1</version>
+                <configuration>
+                    <showLogs>true</showLogs>
+                    <images>
+                        <image>
+                            <name>${project.artifactId}:${project.version}</name>
+                            <run>
+                                <ports>
+                                    <port>${test.server.port}:8080</port>
+                                </ports>
+                                <wait>
+                                    <http>
+                                        <url>http://localhost:${test.server.port}/actuator/health</url>
+                                        <method>GET</method>
+                                        <status>200</status>
+                                    </http>
+                                    <time>60000</time>
+                                </wait>
+                                <env>
+                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
+                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
+                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
+                                    <AWS_REGION>${aws.region}</AWS_REGION>
+                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
+                                </env>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start-docker-container</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop-docker-container</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
+                        <id>inquire aws resources</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
@@ -160,34 +240,52 @@
                             </target>
                         </configuration>
                     </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
                     <execution>
-                        <id>add-integration-test-source</id>
-                        <phase>generate-test-sources</phase>
+                        <id>start https server</id>
                         <goals>
-                            <goal>add-test-source</goal>
+                            <goal>run</goal>
                         </goals>
+                        <phase>pre-integration-test</phase>
                         <configuration>
-                            <sources>
-                                <source>src/it/java</source>
-                            </sources>
+                            <exportAntProperties>true</exportAntProperties>
+                            <target>
+                                <exec executable="ngrok" spawn="true">
+                                    <arg value="http" />
+                                    <arg value="${test.server.port}" />
+                                </exec>
+                                <exec executable="pgrep" outputproperty="ngrok.pid">
+                                    <arg value="-f" />
+                                    <arg value="ngrok http ${test.server.port}" />
+                                </exec>
+                                <exec executable="sleep">
+                                    <arg value="5" />
+                                </exec>
+                                <exec executable="curl" outputproperty="ngrok.json">
+                                    <arg value="-s" />
+                                    <arg value="http://127.0.0.1:4040/api/tunnels" />
+                                </exec>
+                                <exec executable="jq" outputproperty="ngrok.url"
+                                    inputstring="${ngrok.json}">
+                                    <arg value="-r" />
+                                    <arg value=".tunnels[0].public_url" />
+                                </exec>
+                                <echo level="info" message="Start http endpoint ---> ${ngrok.url}" />
+                            </target>
                         </configuration>
                     </execution>
                     <execution>
-                        <id>reserve-test-server-port</id>
+                        <id>stop https server</id>
                         <goals>
-                            <goal>reserve-network-port</goal>
+                            <goal>run</goal>
                         </goals>
-                        <phase>process-test-resources</phase>
+                        <phase>post-integration-test</phase>
                         <configuration>
-                            <portNames>
-                                <portName>test.server.port</portName>
-                            </portNames>
+                            <target>
+                                <exec executable="kill">
+                                    <arg value="${ngrok.pid}" />
+                                </exec>
+                                <echo level="info" message="Stop http endpoint" />
+                            </target>
                         </configuration>
                     </execution>
                 </executions>
@@ -236,55 +334,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>0.45.1</version>
-                <configuration>
-                    <showLogs>true</showLogs>
-                    <images>
-                        <image>
-                            <name>${project.artifactId}:${project.version}</name>
-                            <run>
-                                <ports>
-                                    <port>${test.server.port}:8080</port>
-                                </ports>
-                                <wait>
-                                    <http>
-                                        <url>http://localhost:${test.server.port}/actuator/health</url>
-                                        <method>GET</method>
-                                        <status>200</status>
-                                    </http>
-                                    <time>60000</time>
-                                </wait>
-                                <env>
-                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
-                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
-                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
-                                    <AWS_REGION>${aws.region}</AWS_REGION>
-                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
-                                </env>
-                            </run>
-                        </image>
-                    </images>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>start-docker-container</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop-docker-container</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
@@ -305,10 +354,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <systemPropertyVariables>
-                        <server.port>${test.server.port}</server.port>
-                    </systemPropertyVariables>
                     <environmentVariables>
+                        <NGROK_URL>${ngrok.url}</NGROK_URL>
                     </environmentVariables>
                 </configuration>
                 <executions>
