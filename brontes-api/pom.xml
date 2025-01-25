@@ -19,7 +19,6 @@
         <spring.cloud.aws.version>3.3.0</spring.cloud.aws.version>
         <aws.java.sdk.version>2.30.2</aws.java.sdk.version>
         <postgresql.version>42.7.5</postgresql.version>
-        <restassured.version>5.5.0</restassured.version>
     </properties>
 
     <dependencyManagement>
@@ -72,12 +71,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <version>${restassured.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -95,34 +88,8 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>add-integration-test-source</id>
-                        <phase>generate-test-sources</phase>
-                        <goals>
-                            <goal>add-test-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>src/it/java</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>reserve-test-server-port</id>
-                        <goals>
-                            <goal>reserve-network-port</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                        <configuration>
-                            <portNames>
-                                <portName>test.server.port</portName>
-                            </portNames>
-                        </configuration>
-                    </execution>
-                </executions>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -133,29 +100,13 @@
                         <goals>
                             <goal>run</goal>
                         </goals>
-                        <phase>initialize</phase>
+                        <phase>generate-test-resources</phase>
                         <configuration>
                             <exportAntProperties>true</exportAntProperties>
                             <target>
                                 <property name="aws.region" value="us-east-1" />
-                                <exec executable="aws" outputproperty="cf.outputs">
-                                    <arg value="cloudformation" />
-                                    <arg value="describe-stacks" />
-                                    <arg value="--stack-name" />
-                                    <arg value="--region" />
-                                    <arg value="${aws.region}" />
-                                    <arg value="BrontesStack" />
-                                </exec>
-                                <exec executable="jq" inputstring="${cf.outputs}"
-                                    outputproperty="iam.developer">
-                                    <arg value="-r" />
-                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DeveloperRoleArn&quot;) | .OutputValue" />
-                                </exec>
-                                <exec executable="jq" inputstring="${cf.outputs}"
-                                    outputproperty="dsql.endpoint">
-                                    <arg value="-r" />
-                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DsqlEndpoint&quot;) | .OutputValue" />
-                                </exec>
+                                <property name="iam.developer" value="arn:aws:iam::346929044083:role/Developer" />
+                                <property name="dsql.endpoint" value="4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws" />
                                 <exec executable="aws" outputproperty="sts.output">
                                     <arg value="sts" />
                                     <arg value="assume-role" />
@@ -179,156 +130,8 @@
                                     <arg value="-r" />
                                     <arg value=".Credentials.SessionToken" />
                                 </exec>
-                                <exec executable="aws">
-                                    <arg value="sts" />
-                                    <arg value="get-caller-identity" />
-                                    <env key="AWS_ACCESS_KEY_ID" value="${aws.accessKeyId}" />
-                                    <env key="AWS_SECRET_ACCESS_KEY" value="${aws.secretAccessKey}" />
-                                    <env key="AWS_SESSION_TOKEN" value="${aws.sessionToken}" />
-                                </exec>
+                                <echo level="info" message="Information about AWS resources and credentials has been retrieved." />
                             </target>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>start https server</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <exportAntProperties>true</exportAntProperties>
-                            <target>
-                                <exec executable="ngrok" spawn="true">
-                                    <arg value="http" />
-                                    <arg value="${test.server.port}" />
-                                </exec>
-                                <exec executable="pgrep" outputproperty="ngrok.pid">
-                                    <arg value="-f" />
-                                    <arg value="ngrok http ${test.server.port}" />
-                                </exec>
-                                <exec executable="sleep">
-                                    <arg value="3" />
-                                </exec>
-                                <exec executable="curl" outputproperty="ngrok.json">
-                                    <arg value="-s" />
-                                    <arg value="http://127.0.0.1:4040/api/tunnels" />
-                                </exec>
-                                <exec executable="jq" outputproperty="ngrok.url"
-                                    inputstring="${ngrok.json}">
-                                    <arg value="-r" />
-                                    <arg value=".tunnels[0].public_url" />
-                                </exec>
-                                <echo level="info" message="HTTP API endpoint is now available at: ${ngrok.url}" />
-                            </target>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>stop https server</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>post-integration-test</phase>
-                        <configuration>
-                            <target>
-                                <exec executable="kill">
-                                    <arg value="${ngrok.pid}" />
-                                </exec>
-                                <echo level="info" message="Stop HTTP API endpoint" />
-                            </target>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>0.45.1</version>
-                <configuration>
-                    <showLogs>true</showLogs>
-                    <images>
-                        <image>
-                            <name>${project.artifactId}:${project.version}</name>
-                            <build>
-                                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
-                            </build>
-                            <run>
-                                <ports>
-                                    <port>${test.server.port}:8080</port>
-                                </ports>
-                                <wait>
-                                    <http>
-                                        <url>http://localhost:${test.server.port}/actuator/health</url>
-                                        <method>GET</method>
-                                        <status>200</status>
-                                    </http>
-                                    <time>60000</time>
-                                </wait>
-                                <env>
-                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
-                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
-                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
-                                    <AWS_REGION>${aws.region}</AWS_REGION>
-                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
-                                    <BASE_URI>${ngrok.url}</BASE_URI>
-                                </env>
-                            </run>
-                        </image>
-                    </images>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>build-docker-container</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>build</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>start-docker-container</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop-docker-container</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>compile-ut-classes</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/test-classes</outputDirectory>
-                            <compileSourceRoots>
-                                <sourceRoot>${project.basedir}/src/test/java</sourceRoot>
-                            </compileSourceRoots>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>compile-it-classes</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/it-classes</outputDirectory>
-                            <compileSourceRoots>
-                                <sourceRoot>${project.basedir}/src/it/java</sourceRoot>
-                            </compileSourceRoots>
                         </configuration>
                     </execution>
                 </executions>
@@ -338,48 +141,14 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
-                    <systemPropertyVariables>
-                        <server.port>${test.server.port}</server.port>
-                    </systemPropertyVariables>
                     <environmentVariables>
                         <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
                         <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
                         <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
                         <AWS_REGION>${aws.region}</AWS_REGION>
                         <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
-                        <BASE_URI>${ngrok.url}</BASE_URI>
                     </environmentVariables>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <environmentVariables>
-                        <BASE_URI>${ngrok.url}</BASE_URI>
-                    </environmentVariables>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <includes>
-                                <include>**/IT*.java</include>
-                            </includes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

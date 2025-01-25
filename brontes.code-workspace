@@ -5,9 +5,6 @@
         },
         {
             "path": "brontes-api"
-        },
-        {
-            "path": "brontes-aws"
         }
     ],
     "settings": {
