@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.1</version>
+        <version>3.4.2</version>
         <relativePath />
     </parent>
 
@@ -95,6 +95,33 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <delimiters>
+                                <delimiter>$</delimiter>
+                            </delimiters>
+                            <resources>
+                                <resource>
+                                    <filtering>true</filtering>
+                                    <directory>src/it/docker</directory>
+                                    <includes>
+                                        <include>**/*.yml</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                            <outputDirectory>${project.build.directory}/docker</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
@@ -115,61 +142,12 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <phase>process-test-resources</phase>
+                        <phase>initialize</phase>
                         <configuration>
                             <portNames>
                                 <portName>test.server.port</portName>
                             </portNames>
                         </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>0.45.1</version>
-                <configuration>
-                    <showLogs>true</showLogs>
-                    <images>
-                        <image>
-                            <name>${project.artifactId}:${project.version}</name>
-                            <run>
-                                <ports>
-                                    <port>${test.server.port}:8080</port>
-                                </ports>
-                                <wait>
-                                    <http>
-                                        <url>http://localhost:${test.server.port}/actuator/health</url>
-                                        <method>GET</method>
-                                        <status>200</status>
-                                    </http>
-                                    <time>60000</time>
-                                </wait>
-                                <env>
-                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
-                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
-                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
-                                    <AWS_REGION>${aws.region}</AWS_REGION>
-                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
-                                </env>
-                            </run>
-                        </image>
-                    </images>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>start-docker-container</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop-docker-container</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -287,6 +265,55 @@
                                 <echo level="info" message="Stop http endpoint" />
                             </target>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.45.1</version>
+                <configuration>
+                    <showLogs>true</showLogs>
+                    <images>
+                        <image>
+                            <name>${project.artifactId}:${project.version}</name>
+                            <run>
+                                <ports>
+                                    <port>${test.server.port}:8080</port>
+                                </ports>
+                                <wait>
+                                    <http>
+                                        <url>http://localhost:${test.server.port}/actuator/health</url>
+                                        <method>GET</method>
+                                        <status>200</status>
+                                    </http>
+                                    <time>60000</time>
+                                </wait>
+                                <env>
+                                    <AWS_ACCESS_KEY_ID>${aws.accessKeyId}</AWS_ACCESS_KEY_ID>
+                                    <AWS_SECRET_ACCESS_KEY>${aws.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
+                                    <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
+                                    <AWS_REGION>${aws.region}</AWS_REGION>
+                                    <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
+                                </env>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start-docker-container</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop-docker-container</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
