@@ -95,33 +95,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>process-resources</phase>
-                        <configuration>
-                            <delimiters>
-                                <delimiter>$</delimiter>
-                            </delimiters>
-                            <resources>
-                                <resource>
-                                    <filtering>true</filtering>
-                                    <directory>src/it/docker</directory>
-                                    <includes>
-                                        <include>**/*.yml</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                            <outputDirectory>${project.build.directory}/docker</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
@@ -176,14 +149,12 @@
                                 <exec executable="jq" inputstring="${cf.outputs}"
                                     outputproperty="iam.developer">
                                     <arg value="-r" />
-                                    <arg
-                                        value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DeveloperRoleArn&quot;) | .OutputValue" />
+                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DeveloperRoleArn&quot;) | .OutputValue" />
                                 </exec>
                                 <exec executable="jq" inputstring="${cf.outputs}"
                                     outputproperty="dsql.endpoint">
                                     <arg value="-r" />
-                                    <arg
-                                        value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DsqlEndpoint&quot;) | .OutputValue" />
+                                    <arg value=".Stacks[].Outputs[] | select(.OutputKey == &quot;DsqlEndpoint&quot;) | .OutputValue" />
                                 </exec>
                                 <exec executable="aws" outputproperty="sts.output">
                                     <arg value="sts" />
@@ -236,7 +207,7 @@
                                     <arg value="ngrok http ${test.server.port}" />
                                 </exec>
                                 <exec executable="sleep">
-                                    <arg value="5" />
+                                    <arg value="3" />
                                 </exec>
                                 <exec executable="curl" outputproperty="ngrok.json">
                                     <arg value="-s" />
@@ -247,7 +218,7 @@
                                     <arg value="-r" />
                                     <arg value=".tunnels[0].public_url" />
                                 </exec>
-                                <echo level="info" message="Start http endpoint ---> ${ngrok.url}" />
+                                <echo level="info" message="HTTP API endpoint is now available at: ${ngrok.url}" />
                             </target>
                         </configuration>
                     </execution>
@@ -262,11 +233,15 @@
                                 <exec executable="kill">
                                     <arg value="${ngrok.pid}" />
                                 </exec>
-                                <echo level="info" message="Stop http endpoint" />
+                                <echo level="info" message="Stop HTTP API endpoint" />
                             </target>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>io.fabric8</groupId>
@@ -277,6 +252,9 @@
                     <images>
                         <image>
                             <name>${project.artifactId}:${project.version}</name>
+                            <build>
+                                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
+                            </build>
                             <run>
                                 <ports>
                                     <port>${test.server.port}:8080</port>
@@ -295,12 +273,20 @@
                                     <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
                                     <AWS_REGION>${aws.region}</AWS_REGION>
                                     <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
+                                    <BASE_URI>${ngrok.url}</BASE_URI>
                                 </env>
                             </run>
                         </image>
                     </images>
                 </configuration>
                 <executions>
+                    <execution>
+                        <id>build-docker-container</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
                     <execution>
                         <id>start-docker-container</id>
                         <phase>pre-integration-test</phase>
@@ -348,19 +334,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>build-image</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>build-image-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
@@ -374,6 +347,7 @@
                         <AWS_SESSION_TOKEN>${aws.sessionToken}</AWS_SESSION_TOKEN>
                         <AWS_REGION>${aws.region}</AWS_REGION>
                         <DSQL_ENDPOINT>${dsql.endpoint}</DSQL_ENDPOINT>
+                        <BASE_URI>${ngrok.url}</BASE_URI>
                     </environmentVariables>
                 </configuration>
             </plugin>
@@ -382,7 +356,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
                     <environmentVariables>
-                        <NGROK_URL>${ngrok.url}</NGROK_URL>
+                        <BASE_URI>${ngrok.url}</BASE_URI>
                     </environmentVariables>
                 </configuration>
                 <executions>

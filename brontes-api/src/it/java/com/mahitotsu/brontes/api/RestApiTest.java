@@ -9,7 +9,7 @@ public abstract class RestApiTest {
 
     @BeforeAll
     public static void setup() {
-        RestAssured.baseURI = System.getenv("NGROK_URL");
+        RestAssured.baseURI = System.getenv("BASE_URI");
         RestAssured.requestSpecification = new RequestSpecBuilder().addHeader("Content-Type", "application/json")
                 .build();
     }
