@@ -3,19 +3,16 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
-        <relativePath />
-    </parent>
-
     <groupId>com.mahitotsu.com</groupId>
     <artifactId>brontes-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
         <java.version>23</java.version>
+        <aws.java.sdk.version>2.30.7</aws.java.sdk.version>
+        <aws.region>us-east-1</aws.region>
+        <aws.role.arn>arn:aws:iam::346929044083:role/Developer</aws.role.arn>
+        <aws.dsql.endpoint>4iabtwnq2j55iez4j4bkykghgm.dsql.us-east-1.on.aws</aws.dsql.endpoint>
     </properties>
 
     <dependencies>
@@ -29,10 +26,46 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>r2dbc-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>dsql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.2</version>
+        <relativePath />
+    </parent>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.java.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
@@ -50,10 +83,81 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-aws-credentials</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <exportAntProperties>true</exportAntProperties>
+                            <target>
+                                <exec executable="bash" outputproperty="role.session.name">
+                                    <arg value="-c" />
+                                    <arg value="head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '='" />
+                                </exec>
+                                <exec executable="aws" outputproperty="aws.credentials">
+                                    <arg value="sts" />
+                                    <arg value="assume-role" />
+                                    <arg value="--role-arn" />
+                                    <arg value="${aws.role.arn}" />
+                                    <arg value="--role-session-name" />
+                                    <arg value="${role.session.name}" />
+                                    <arg value="--region" />
+                                    <arg value="${aws.region}" />
+                                </exec>
+                                <exec executable="jq" outputproperty="aws.credentials.accessKeyId" inputstring="${aws.credentials}">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.AccessKeyId" />
+                                </exec>
+                                <exec executable="jq"
+                                    outputproperty="aws.credentials.secretAccessKey" inputstring="${aws.credentials}">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.SecretAccessKey" />
+                                </exec>
+                                <exec executable="jq" outputproperty="aws.credentials.sessionToken" inputstring="${aws.credentials}">
+                                    <arg value="-r" />
+                                    <arg value=".Credentials.SessionToken" />
+                                </exec>
+                                <echo level="info" message="${aws.credentials.accessKeyId}" />
+                                <echo level="info" message="${aws.credentials.secretAccessKey}" />
+                                <echo level="info" message="${aws.credentials.sessionToken}" />
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>preform-unit-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <environmentVariables>
+                                <AWS_ACCESS_KEY_ID>${aws.credentials.accessKeyId}</AWS_ACCESS_KEY_ID>
+                                <AWS_SECRET_ACCESS_KEY>${aws.credentials.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
+                                <AWS_SESSION_TOKEN>${aws.credentials.sessionToken}</AWS_SESSION_TOKEN>
+                                <AWS_REGION>${aws.region}</AWS_REGION>
+                                <SPRING_R2DBC_URL>r2dbc:postgresql://${aws.dsql.endpoint}/postgres?sslMode=REQUIRE</SPRING_R2DBC_URL>
+                                <SPRING_R2DBC_USERNAME>admin</SPRING_R2DBC_USERNAME>
+                            </environmentVariables>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
