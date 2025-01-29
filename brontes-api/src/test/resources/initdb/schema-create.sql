@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS value_table (
+    id UUID NOT NULL,
+    value INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);

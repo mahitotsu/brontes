@@ -152,6 +152,7 @@
                                 <AWS_SECRET_ACCESS_KEY>${aws.credentials.secretAccessKey}</AWS_SECRET_ACCESS_KEY>
                                 <AWS_SESSION_TOKEN>${aws.credentials.sessionToken}</AWS_SESSION_TOKEN>
                                 <AWS_REGION>${aws.region}</AWS_REGION>
+                                <AWS_DSQL_ENDPOINT>${aws.dsql.endpoint}</AWS_DSQL_ENDPOINT>
                                 <SPRING_R2DBC_URL>r2dbc:postgresql://${aws.dsql.endpoint}/postgres?sslMode=REQUIRE</SPRING_R2DBC_URL>
                                 <SPRING_R2DBC_USERNAME>admin</SPRING_R2DBC_USERNAME>
                             </environmentVariables>
