@@ -36,6 +36,10 @@
             <artifactId>r2dbc-postgresql</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
+        </dependency>
+        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dsql</artifactId>
         </dependency>
@@ -109,8 +113,13 @@
                 <configuration>
                     <argLine>-javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
-                        <SPRING_R2DBC_URL>r2dbc:postgresql://${aws.dsql.endpoint}/postgres?sslMode=REQUIRE</SPRING_R2DBC_URL>
+                        <SPRING_R2DBC_URL>r2dbc:postgresql://${aws.dsql.endpoint}/postgres</SPRING_R2DBC_URL>
                         <SPRING_R2DBC_USERNAME>admin</SPRING_R2DBC_USERNAME>
+                        <SPRING_R2DBC_PROPERTIES_SSLMODE>REQUIRE</SPRING_R2DBC_PROPERTIES_SSLMODE>
+                        <SPRING_R2DBC_POOL_ENABLED>true</SPRING_R2DBC_POOL_ENABLED>
+                        <SPRING_R2DBC_POOL_INITIAL_SIZE>1</SPRING_R2DBC_POOL_INITIAL_SIZE>
+                        <SPRING_R2DBC_POOL_MAX-SIZE>16</SPRING_R2DBC_POOL_MAX-SIZE>
+                        <SPRING_R2DBC_POOL_MAX-IDLE-TIME>10m</SPRING_R2DBC_POOL_MAX-IDLE-TIME>
                         <SPRING_CLOUD_AWS_CREDENTIALS_PROFILE_NAME>default</SPRING_CLOUD_AWS_CREDENTIALS_PROFILE_NAME>
                     </environmentVariables>
                 </configuration>

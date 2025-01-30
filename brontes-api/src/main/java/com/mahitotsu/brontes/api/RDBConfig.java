@@ -15,7 +15,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dsql.DsqlUtilities;
 
 @Configuration
-public class AwsConfig {
+public class RDBConfig {
 
     @Bean
     public ConnectionFactoryOptionsBuilderCustomizer connectionFactoryOptionsBuilderCustomizer(

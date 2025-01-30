@@ -10,19 +10,18 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 
 import com.mahitotsu.brontes.api.config.DataConfig;
-
-import io.r2dbc.spi.ConnectionFactory;
+import com.mahitotsu.brontes.api.repository.EventRepository;
 
 @SpringBootTest
 @Import({ DataConfig.class })
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
-public class RepositoryTest {
+public class EventRepositoryTest {
 
     @Autowired
-    private ConnectionFactory connectionFactory;
+    private EventRepository eventRepository;
 
     @Test
-    public void testConnectionAvailable() {
-        assertNotNull(this.connectionFactory);
+    public void testRepositoryAvailable() {
+        assertNotNull(this.eventRepository);
     }
 }
