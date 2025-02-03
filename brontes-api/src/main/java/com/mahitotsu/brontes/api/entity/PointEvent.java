@@ -18,6 +18,7 @@ public class PointEvent {
     @Id
     private UUID eventId;
     private String transactionId;
+    private Status eventStatus;
     private String branchNumber;
     private String accountNumber;
     private Integer amount;

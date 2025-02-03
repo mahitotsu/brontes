@@ -1,5 +1,8 @@
 package com.mahitotsu.brontes.api.repository;
 
+import static org.springframework.data.relational.core.query.Criteria.where;
+import static org.springframework.data.relational.core.query.Query.query;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityOperations;
 import org.springframework.stereotype.Repository;
@@ -23,6 +26,7 @@ public class PointEventRepository {
         event.setAccountNumber(accountNumber);
         event.setAmount(amount);
 
-        return client.insert(event);
+        return client.insert(event).flatMap(publishedEvent -> this.client
+                .selectOne(query(where("eventId").is(publishedEvent.getEventId())), PointEvent.class));
     }
 }

@@ -1,6 +1,14 @@
 package com.mahitotsu.brontes.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,16 +37,43 @@ public class PointEventRepositoryTest {
     @Test
     public void testPublishPointEvent() {
 
-        final String branchNumber = String.format("%03d", SEED.nextInt(10 ^ 3));
-        final String accountNumber = String.format("%07d", SEED.nextInt(10 ^ 7));
-        final int amount = SEED.nextInt(SEED.nextInt(100) * (SEED.nextBoolean() ? 1 : -1));
+        final String branchNumber = String.format("%03d", SEED.nextInt(100));
+        final String accountNumber = String.format("%07d", SEED.nextInt(10000000));
+        final int amount = SEED.nextInt(100) * (SEED.nextBoolean() ? 1 : -1);
 
         final Mono<PointEvent> mono = this.pointEventRepository.publishEvent(branchNumber, accountNumber, amount);
 
-        StepVerifier.create(mono).expectNextMatches(entity -> {
-            return branchNumber.equals(entity.getBranchNumber())
-                    && accountNumber.equals(entity.getAccountNumber())
-                    && amount == entity.getAmount();
+        StepVerifier.create(mono).assertNext(entity -> {
+            assertEquals(branchNumber, entity.getBranchNumber());
+            assertEquals(accountNumber, entity.getAccountNumber());
+            assertEquals(amount, entity.getAmount());
+            assertNotNull(entity.getEventId());
+            assertNotNull(entity.getEventStatus());
+            assertNotNull(entity.getTransactionId());
+        }).verifyComplete();
+    }
+
+    @Test
+    public void testGeneratesUniqueAndOrderedEvents() throws Exception {
+
+        final Callable<Mono<PointEvent>> publisEventTask = () -> {
+            final String branchNumber = String.format("%03d", SEED.nextInt(100));
+            final String accountNumber = String.format("%07d", SEED.nextInt(10000000));
+            final int amount = SEED.nextInt(100) * (SEED.nextBoolean() ? 1 : -1);
+            return this.pointEventRepository.publishEvent(branchNumber, accountNumber, amount);
+        };
+
+        final List<PointEvent> eventList = new ArrayList<>();
+        final Mono<PointEvent> publish1 = publisEventTask.call().doOnNext(eventList::add);
+        final Mono<PointEvent> publish2 = publisEventTask.call().doOnNext(eventList::add);
+
+        StepVerifier.create(publish1.then(publish2).then(Mono.just(eventList))).assertNext(list -> {
+            assertEquals(2, list.size());
+            final PointEvent event1 = list.get(0);
+            final PointEvent event2 = list.get(1);
+            assertNotEquals(event1.getEventId(), event2.getEventId());
+            assertNotEquals(event1.getTransactionId(), event2.getTransactionId());
+            assertTrue(event1.getTransactionId().compareTo(event2.getTransactionId()) < 0);
         }).verifyComplete();
     }
 }
