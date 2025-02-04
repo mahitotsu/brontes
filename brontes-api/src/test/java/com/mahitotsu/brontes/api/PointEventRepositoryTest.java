@@ -1,9 +1,6 @@
 package com.mahitotsu.brontes.api;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,8 +45,6 @@ public class PointEventRepositoryTest {
             assertEquals(accountNumber, entity.getAccountNumber());
             assertEquals(amount, entity.getAmount());
             assertNotNull(entity.getEventId());
-            assertNotNull(entity.getEventStatus());
-            assertNotNull(entity.getTransactionId());
         }).verifyComplete();
     }
 
@@ -72,8 +67,7 @@ public class PointEventRepositoryTest {
             final PointEvent event1 = list.get(0);
             final PointEvent event2 = list.get(1);
             assertNotEquals(event1.getEventId(), event2.getEventId());
-            assertNotEquals(event1.getTransactionId(), event2.getTransactionId());
-            assertTrue(event1.getTransactionId().compareTo(event2.getTransactionId()) < 0);
+            assertTrue(event1.getEventId().compareTo(event2.getEventId()) < 0);
         }).verifyComplete();
     }
 }

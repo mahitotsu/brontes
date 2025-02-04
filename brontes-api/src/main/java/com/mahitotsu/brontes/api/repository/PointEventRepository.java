@@ -1,10 +1,7 @@
 package com.mahitotsu.brontes.api.repository;
 
-import static org.springframework.data.relational.core.query.Criteria.where;
-import static org.springframework.data.relational.core.query.Query.query;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.r2dbc.core.R2dbcEntityOperations;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,18 +12,33 @@ import reactor.core.publisher.Mono;
 @Repository
 public class PointEventRepository {
 
+    private static final String REPO_NAME = "point_events";
+
     @Autowired
-    private R2dbcEntityOperations client;
+    private DatabaseClient dbClient;
+
+    @Autowired
+    private QueryLoader queryExecutor;
 
     @Transactional
     public Mono<PointEvent> publishEvent(final String branchNumber, final String accountNumber, final int amount) {
 
-        final PointEvent event = new PointEvent();
-        event.setBranchNumber(branchNumber);
-        event.setAccountNumber(accountNumber);
-        event.setAmount(amount);
-
-        return client.insert(event).flatMap(publishedEvent -> this.client
-                .selectOne(query(where("eventId").is(publishedEvent.getEventId())), PointEvent.class));
+        final int txSeq = 0;
+        final Mono<String> insertResult = this.dbClient
+                .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "insert-new"))
+                .bind("txSeq", txSeq)
+                .bind("eventStatus", PointEvent.Status.C.name())
+                .bind("branchNumber", branchNumber)
+                .bind("accountNumber", accountNumber)
+                .bind("amount", amount)
+                .filter(stm -> stm.returnGeneratedValues("tx_id"))
+                .map(row -> row.get("tx_id", String.class))
+                .one();
+        return insertResult.flatMap(txId -> this.dbClient
+                .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "select-by-pk"))
+                .bind("txId", txId)
+                .bind("txSeq", txSeq)
+                .mapProperties(PointEvent.class)
+                .one());
     }
 }

@@ -1,13 +1,7 @@
 package com.mahitotsu.brontes.api.entity;
 
-import java.util.UUID;
-
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
-
 import lombok.Data;
 
-@Table("point_events")
 @Data
 public class PointEvent {
 
@@ -15,9 +9,7 @@ public class PointEvent {
         C, A, R
     }
 
-    @Id
-    private UUID eventId;
-    private String transactionId;
+    private String eventId;
     private Status eventStatus;
     private String branchNumber;
     private String accountNumber;
