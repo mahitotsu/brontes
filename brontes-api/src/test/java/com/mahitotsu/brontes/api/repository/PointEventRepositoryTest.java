@@ -1,4 +1,4 @@
-package com.mahitotsu.brontes.api;
+package com.mahitotsu.brontes.api.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -12,21 +12,14 @@ import java.util.concurrent.Callable;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.annotation.DirtiesContext.ClassMode;
-import org.springframework.test.context.ActiveProfiles;
 
+import com.mahitotsu.brontes.api.AbstractSpringTest;
 import com.mahitotsu.brontes.api.entity.PointEvent;
-import com.mahitotsu.brontes.api.repository.PointEventRepository;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-@SpringBootTest
-@ActiveProfiles("initdb")
-@DirtiesContext(classMode = ClassMode.AFTER_CLASS)
-public class PointEventRepositoryTest {
+public class PointEventRepositoryTest extends AbstractSpringTest {
 
     private static final Random SEED = new Random();
 

@@ -39,25 +39,27 @@ public class RDBConfig {
                 .credentialsProvider(awsCredentialsProvider)
                 .region(region)
                 .build();
-        final Supplier<CharSequence> tokenSupplier = () -> utilities.generateDbConnectAdminAuthToken(builder -> builder
-                .hostname(endpoint)
-                .expiresIn(Duration.ofSeconds(10))
-                .build());
+        final Supplier<CharSequence> tokenSupplier = () -> utilities
+                .generateDbConnectAdminAuthToken(builder -> builder
+                        .hostname(endpoint)
+                        .expiresIn(Duration.ofSeconds(10))
+                        .build());
 
         return builder -> {
-            builder.option(Option.sensitiveValueOf(ConnectionFactoryOptions.PASSWORD.name()), tokenSupplier);
+            builder.option(Option.sensitiveValueOf(ConnectionFactoryOptions.PASSWORD.name()),
+                    tokenSupplier);
         };
     }
 
     @Bean
-    @Profile("initdb")
+    @Profile("drop-create")
     public ConnectionFactoryInitializer connectionFactoryInitializer(final ConnectionFactory connectionFactory) {
 
         final DatabasePopulator creator = new ResourceDatabasePopulator(
-                this.resourceLoader.getResource("classpath:queries/initdb/schema-drop.sql"),
-                this.resourceLoader.getResource("classpath:queries/initdb/schema-create.sql"));
+                this.resourceLoader.getResource("classpath:initdb/drop-create/schema-drop.sql"),
+                this.resourceLoader.getResource("classpath:initdb/drop-create/schema-create.sql"));
         final DatabasePopulator cleaner = new ResourceDatabasePopulator(
-                this.resourceLoader.getResource("classpath:queries/initdb/schema-drop.sql"));
+                this.resourceLoader.getResource("classpath:initdb/drop-create/schema-drop.sql"));
 
         final ConnectionFactoryInitializer initializer = new ConnectionFactoryInitializer();
         initializer.setConnectionFactory(connectionFactory);

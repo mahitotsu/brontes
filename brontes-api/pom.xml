@@ -36,10 +36,6 @@
             <artifactId>r2dbc-postgresql</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.r2dbc</groupId>
-            <artifactId>r2dbc-pool</artifactId>
-        </dependency>
-        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dsql</artifactId>
         </dependency>
