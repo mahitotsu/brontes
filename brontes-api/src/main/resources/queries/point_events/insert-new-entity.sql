@@ -1,14 +1,12 @@
 INSERT INTO point_events (
-        tx_seq,
-        event_status,
         branch_number,
         account_number,
+        tx_seq,
         amount
     )
 VALUES (
-        :txSeq,
-        :eventStatus,
         :branchNumber,
         :accountNumber,
+        :newTxSeq,
         :amount
     )

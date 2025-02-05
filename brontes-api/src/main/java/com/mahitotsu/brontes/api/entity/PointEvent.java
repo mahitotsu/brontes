@@ -9,9 +9,8 @@ public class PointEvent {
         C, A, R
     }
 
-    private String eventId;
-    private Status eventStatus;
     private String branchNumber;
     private String accountNumber;
+    private Long txSeq;
     private Integer amount;
 }

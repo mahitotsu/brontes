@@ -23,22 +23,30 @@ public class PointEventRepository {
     @Transactional
     public Mono<PointEvent> publishEvent(final String branchNumber, final String accountNumber, final int amount) {
 
-        final int txSeq = 0;
-        final Mono<String> insertResult = this.dbClient
-                .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "insert-new"))
-                .bind("txSeq", txSeq)
-                .bind("eventStatus", PointEvent.Status.C.name())
-                .bind("branchNumber", branchNumber)
-                .bind("accountNumber", accountNumber)
-                .bind("amount", amount)
-                .filter(stm -> stm.returnGeneratedValues("tx_id"))
-                .map(row -> row.get("tx_id", String.class))
-                .one();
-        return insertResult.flatMap(txId -> this.dbClient
-                .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "select-by-pk"))
-                .bind("txId", txId)
-                .bind("txSeq", txSeq)
-                .mapProperties(PointEvent.class)
-                .one());
+        return Mono.just(0L)
+                .flatMap(initialTxSeq -> this.dbClient
+                        .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "get-last-txSeq"))
+                        .bind("branchNumber", branchNumber)
+                        .bind("accountNumber", accountNumber)
+                        .mapValue(Long.class)
+                        .one()
+                        .defaultIfEmpty(initialTxSeq)
+                        .map(lastTxSeq -> lastTxSeq + 1))
+                .flatMap(newTxSeq -> this.dbClient
+                        .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "insert-new-entity"))
+                        .bind("branchNumber", branchNumber)
+                        .bind("accountNumber", accountNumber)
+                        .bind("newTxSeq", newTxSeq)
+                        .bind("amount", amount)
+                        .fetch()
+                        .rowsUpdated()
+                        .thenReturn(newTxSeq))
+                .flatMap(newTxSeq -> this.dbClient
+                        .sql(() -> this.queryExecutor.loadNamedQuery(REPO_NAME, "get-entity-by-pk"))
+                        .bind("branchNumber", branchNumber)
+                        .bind("accountNumber", accountNumber)
+                        .bind("newTxSeq", newTxSeq)
+                        .mapProperties(PointEvent.class)
+                        .one());
     }
 }

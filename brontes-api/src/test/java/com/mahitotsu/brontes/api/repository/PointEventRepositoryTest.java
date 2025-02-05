@@ -1,9 +1,6 @@
 package com.mahitotsu.brontes.api.repository;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,16 +36,16 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
             assertEquals(branchNumber, entity.getBranchNumber());
             assertEquals(accountNumber, entity.getAccountNumber());
             assertEquals(amount, entity.getAmount());
-            assertNotNull(entity.getEventId());
+            assertNotNull(entity.getTxSeq());
         }).verifyComplete();
     }
 
     @Test
     public void testGeneratesUniqueAndOrderedEvents() throws Exception {
 
+        final String branchNumber = String.format("%03d", SEED.nextInt(100));
+        final String accountNumber = String.format("%07d", SEED.nextInt(10000000));
         final Callable<Mono<PointEvent>> publisEventTask = () -> {
-            final String branchNumber = String.format("%03d", SEED.nextInt(100));
-            final String accountNumber = String.format("%07d", SEED.nextInt(10000000));
             final int amount = SEED.nextInt(100) * (SEED.nextBoolean() ? 1 : -1);
             return this.pointEventRepository.publishEvent(branchNumber, accountNumber, amount);
         };
@@ -61,8 +58,8 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
             assertEquals(2, list.size());
             final PointEvent event1 = list.get(0);
             final PointEvent event2 = list.get(1);
-            assertNotEquals(event1.getEventId(), event2.getEventId());
-            assertTrue(event1.getEventId().compareTo(event2.getEventId()) < 0);
+            assertNotEquals(event1.getTxSeq(), event2.getTxSeq());
+            assertTrue(event1.getTxSeq().compareTo(event2.getTxSeq()) < 0);
         }).verifyComplete();
     }
 }
