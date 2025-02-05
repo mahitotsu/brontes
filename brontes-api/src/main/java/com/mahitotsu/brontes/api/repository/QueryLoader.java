@@ -20,7 +20,7 @@ public class QueryLoader {
         final String path = "classpath:queries/" + groupName + "/" + queryName + ".sql";
         try {
             return this.resourceLoader.getResource(path)
-                    .getContentAsString(Charset.defaultCharset());
+                    .getContentAsString(Charset.defaultCharset()).replaceAll("\\n", " ");
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

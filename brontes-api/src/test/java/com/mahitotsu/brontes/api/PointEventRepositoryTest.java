@@ -1,6 +1,9 @@
 package com.mahitotsu.brontes.api;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,11 +13,10 @@ import java.util.concurrent.Callable;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
+import org.springframework.test.context.ActiveProfiles;
 
-import com.mahitotsu.brontes.api.config.DataConfig;
 import com.mahitotsu.brontes.api.entity.PointEvent;
 import com.mahitotsu.brontes.api.repository.PointEventRepository;
 
@@ -22,7 +24,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 @SpringBootTest
-@Import({ DataConfig.class })
+@ActiveProfiles("initdb")
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
 public class PointEventRepositoryTest {
 
