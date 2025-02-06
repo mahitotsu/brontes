@@ -1,7 +1,5 @@
 SELECT
-    branch_number,
-    account_number,
-    balance
+    count(account_number) > 0
 FROM
     point_events
 WHERE

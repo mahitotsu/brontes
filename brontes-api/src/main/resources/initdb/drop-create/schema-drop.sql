@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS point_events;
+DROP TABLE IF EXISTS accounts;
