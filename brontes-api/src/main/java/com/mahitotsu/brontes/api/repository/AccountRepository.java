@@ -1,7 +1,7 @@
 package com.mahitotsu.brontes.api.repository;
 
-import static org.springframework.data.relational.core.query.Criteria.where;
-import static org.springframework.data.relational.core.query.Query.query;
+import static org.springframework.data.relational.core.query.Criteria.*;
+import static org.springframework.data.relational.core.query.Query.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityOperations;
@@ -19,26 +19,38 @@ public class AccountRepository {
     private R2dbcEntityOperations operations;
 
     @Transactional
-    public Mono<Account> createAccount(final String branchNumber, final String accountNumber) {
+    public Mono<Account> openAccount(final String branchNumber, final String accountNumber) {
 
-        final Account newEntity = new Account();
-        newEntity.setBranchNumber(branchNumber);
-        newEntity.setAccountNumber(accountNumber);
-        newEntity.setBalance(0L);
-
-        return this.operations.insert(Account.class).using(newEntity);
+        return this.getAccount(branchNumber, accountNumber)
+                .switchIfEmpty(Mono.defer(() -> {
+                    final Account newAccount = new Account();
+                    newAccount.setBranchNumber(branchNumber);
+                    newAccount.setAccountNumber(accountNumber);
+                    newAccount.setBalance(0L);
+                    return this.operations.insert(newAccount).then(this.getAccount(branchNumber, accountNumber));
+                }));
     }
 
     @Transactional
     public Mono<Account> updateBalance(final String branchNumber, final String accountNumber, final long amount) {
 
-        return this.operations.selectOne(query(
-                where("branchNumber").is(branchNumber)
-                        .and(where("accountNumber").is(accountNumber))),
-                Account.class)
+        return this.getAccount(branchNumber, accountNumber)
                 .flatMap(account -> {
                     account.setBalance(account.getBalance() + amount);
                     return this.operations.update(account);
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public Mono<Account> getAccount(final String branchNumber, final String accountNumber) {
+
+        try {
+            return this.operations.selectOne(query(
+                    where("branchNumber").is(branchNumber)
+                            .and(where("accountNumber").is(accountNumber))),
+                    Account.class);
+        } catch (RuntimeException e) {
+            return Mono.empty();
+        }
     }
 }
