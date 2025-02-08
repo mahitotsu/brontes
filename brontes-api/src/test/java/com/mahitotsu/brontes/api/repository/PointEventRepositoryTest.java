@@ -53,8 +53,8 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         final String accountNumber = this.randomAccountNumber();
 
         StepVerifier.create(Mono.zip(
-                this.accountRepository.openAccount(branchNumber, accountNumber).retry(5),
-                this.accountRepository.openAccount(branchNumber, accountNumber).retry(5)))
+                this.accountRepository.openAccount(branchNumber, accountNumber),
+                this.accountRepository.openAccount(branchNumber, accountNumber)))
                 .assertNext(accounts -> {
                     final Account account1 = accounts.getT1();
                     final Account account2 = accounts.getT2();
@@ -128,7 +128,8 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
                 .verifyComplete();
 
         final int amount3 = SEED.nextInt(amount1 + amount2);
-        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount3 * -1).block();
+        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount3 * -1)
+                .block();
         assertEquals(amount1 + amount2 - amount3, account.getBalance());
     }
 
@@ -165,7 +166,8 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount))
                 .verifyComplete();
 
-        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount).block();
+        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount)
+                .block();
         assertNull(account);
     }
 }

@@ -1,4 +1,4 @@
 logging:
   level:
-    '[org.springframework.r2dbc]': debug 
-    '[org.springframework.transaction]': debug 
+    '[org.springframework.r2dbc]': debug
+    '[org.springframework.transaction]': debug
