@@ -44,13 +44,13 @@ public class AccountRepository {
     @Transactional(readOnly = true)
     public Mono<Account> getAccount(final String branchNumber, final String accountNumber) {
 
-        try {
-            return this.operations.selectOne(query(
-                    where("branchNumber").is(branchNumber)
-                            .and(where("accountNumber").is(accountNumber))),
-                    Account.class);
-        } catch (RuntimeException e) {
+        if (branchNumber == null || accountNumber == null) {
             return Mono.empty();
         }
+
+        return this.operations.selectOne(query(
+                where("branchNumber").is(branchNumber)
+                        .and(where("accountNumber").is(accountNumber))),
+                Account.class);
     }
 }
