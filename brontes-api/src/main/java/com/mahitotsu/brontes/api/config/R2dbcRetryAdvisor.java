@@ -24,19 +24,21 @@ import reactor.util.retry.RetrySpec;
 @Order(Integer.MAX_VALUE)
 public class R2dbcRetryAdvisor extends StaticMethodMatcherPointcutAdvisor {
 
-    public R2dbcRetryAdvisor() {
-        super(new MethodInterceptor() {
-            @Override
-            public Object invoke(MethodInvocation invocation) throws Throwable {
-                final Object result = invocation.proceed();
-                if (Mono.class.isInstance(result) == false) {
-                    return result;
-                }
-                final Mono<?> mono = Mono.class.cast(result);
-                return mono.retryWhen(RetrySpec.backoff(5, Duration.ofMillis(500))
-                        .filter(t -> CannotAcquireLockException.class.isInstance(t)));
+    private static class RetryAppender implements MethodInterceptor {
+        @Override
+        public Object invoke(MethodInvocation invocation) throws Throwable {
+            final Object result = invocation.proceed();
+            if (Mono.class.isInstance(result) == false) {
+                return result;
             }
-        });
+            final Mono<?> mono = Mono.class.cast(result);
+            return mono.retryWhen(RetrySpec.backoff(5, Duration.ofMillis(500))
+                    .filter(t -> CannotAcquireLockException.class.isInstance(t)));
+        }
+    }
+
+    public R2dbcRetryAdvisor() {
+        super(new RetryAppender());
     }
 
     @Override

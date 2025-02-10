@@ -19,7 +19,7 @@ public class AccountRepository {
     private R2dbcEntityOperations operations;
 
     @Transactional
-    public Mono<Account> openAccount(final String branchNumber, final String accountNumber) {
+    public Mono<Account> openNewAccount(final String branchNumber, final String accountNumber) {
 
         return this.getAccount(branchNumber, accountNumber)
                 .switchIfEmpty(Mono.defer(() -> {

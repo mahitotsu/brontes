@@ -31,12 +31,12 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
     }
 
     @Test
-    public void testOpneNewAccount() {
+    public void testOpenNewAccount() {
 
         final String branchNumber = this.randomBranchNumber();
         final String accountNumber = this.randomAccountNumber();
 
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, accountNumber))
                 .assertNext(account -> {
                     assertNotNull(account.getId());
                     assertEquals(branchNumber, account.getBranchNumber());
@@ -47,14 +47,14 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
     }
 
     @Test
-    public void testOpenAccount_IdempotencyWithDuplicateUniqueKey() {
+    public void testOpenNewAccount_IdempotencyWithDuplicateUniqueKey() {
 
         final String branchNumber = this.randomBranchNumber();
         final String accountNumber = this.randomAccountNumber();
 
         StepVerifier.create(Mono.zip(
-                this.accountRepository.openAccount(branchNumber, accountNumber),
-                this.accountRepository.openAccount(branchNumber, accountNumber)))
+                this.accountRepository.openNewAccount(branchNumber, accountNumber),
+                this.accountRepository.openNewAccount(branchNumber, accountNumber)))
                 .assertNext(accounts -> {
                     final Account account1 = accounts.getT1();
                     final Account account2 = accounts.getT2();
@@ -69,11 +69,11 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         final String branchNumber = this.randomBranchNumber();
         final String accountNumber = this.randomAccountNumber();
 
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, null))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, null))
                 .verifyError(DataIntegrityViolationException.class);
-        StepVerifier.create(this.accountRepository.openAccount(null, accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount(null, accountNumber))
                 .verifyError(DataIntegrityViolationException.class);
-        StepVerifier.create(this.accountRepository.openAccount(null, null))
+        StepVerifier.create(this.accountRepository.openNewAccount(null, null))
                 .verifyError(DataIntegrityViolationException.class);
     }
 
@@ -82,11 +82,11 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
 
         final String accountNumber = this.randomAccountNumber();
 
-        StepVerifier.create(this.accountRepository.openAccount("01", accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount("01", accountNumber))
                 .verifyError(DataIntegrityViolationException.class);
-        StepVerifier.create(this.accountRepository.openAccount("0123", accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount("0123", accountNumber))
                 .verifyError(BadSqlGrammarException.class);
-        StepVerifier.create(this.accountRepository.openAccount("01A", accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount("01A", accountNumber))
                 .verifyError(DataIntegrityViolationException.class);
     }
 
@@ -95,11 +95,11 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
 
         final String branchNumber = this.randomBranchNumber();
 
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, "012345"))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, "012345"))
                 .verifyError(DataIntegrityViolationException.class);
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, "012345678"))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, "012345678"))
                 .verifyError(BadSqlGrammarException.class);
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, "012345B"))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, "012345B"))
                 .verifyError(DataIntegrityViolationException.class);
     }
 
@@ -110,7 +110,7 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         final String accountNumber = this.randomAccountNumber();
         final int amount1 = SEED.nextInt(100);
 
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, accountNumber))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -140,7 +140,7 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         final String accountNumber = this.randomAccountNumber();
         final int amount1 = SEED.nextInt(100);
 
-        StepVerifier.create(this.accountRepository.openAccount(branchNumber, accountNumber))
+        StepVerifier.create(this.accountRepository.openNewAccount(branchNumber, accountNumber))
                 .expectNextCount(1)
                 .verifyComplete();
 
