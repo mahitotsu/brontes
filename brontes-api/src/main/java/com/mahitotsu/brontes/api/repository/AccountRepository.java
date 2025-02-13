@@ -2,9 +2,11 @@ package com.mahitotsu.brontes.api.repository;
 
 import static org.springframework.data.relational.core.query.Criteria.*;
 import static org.springframework.data.relational.core.query.Query.*;
+import static org.springframework.data.relational.core.query.Update.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityOperations;
+import org.springframework.data.relational.core.query.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +21,7 @@ public class AccountRepository {
     private R2dbcEntityOperations operations;
 
     @Transactional
-    public Mono<Account> openNewAccount(final String branchNumber, final String accountNumber) {
+    public Mono<Account> openAccount(final String branchNumber, final String accountNumber) {
 
         return this.getAccount(branchNumber, accountNumber)
                 .switchIfEmpty(Mono.defer(() -> {
@@ -36,21 +38,30 @@ public class AccountRepository {
 
         return this.getAccount(branchNumber, accountNumber)
                 .flatMap(account -> {
-                    account.setBalance(account.getBalance() + amount);
-                    return this.operations.update(account);
+                    final long newBalance = account.getBalance() + amount;
+                    account.setBalance(newBalance);
+                    return this.operations.update(Account.class).matching(this.buildQuery(branchNumber, accountNumber))
+                            .apply(update("balance", newBalance)).thenReturn(account);
                 });
     }
 
     @Transactional(readOnly = true)
     public Mono<Account> getAccount(final String branchNumber, final String accountNumber) {
 
-        if (branchNumber == null || accountNumber == null) {
-            return Mono.empty();
-        }
+        return this.operations.selectOne(this.buildQuery(branchNumber, accountNumber), Account.class);
+    }
 
-        return this.operations.selectOne(query(
-                where("branchNumber").is(branchNumber)
-                        .and(where("accountNumber").is(accountNumber))),
-                Account.class);
+    @Transactional
+    public Mono<Boolean> closeAccount(final String branchNumber, final String accountNumber) {
+
+        return this.operations.delete(Account.class).matching(this.buildQuery(branchNumber, accountNumber)).all()
+                .map(count -> count > 0);
+    }
+
+    private Query buildQuery(final String branchNumber, final String accountNumber) {
+
+        return query(branchNumber == null ? where("branchNumber").isNull()
+                : where("branchNumber").is(branchNumber).and(accountNumber == null ? where("accountNumber").isNull()
+                        : where("accountNumber").is(accountNumber)));
     }
 }
