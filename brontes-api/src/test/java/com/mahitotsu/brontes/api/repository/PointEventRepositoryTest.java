@@ -2,6 +2,7 @@ package com.mahitotsu.brontes.api.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,8 @@ import org.springframework.r2dbc.BadSqlGrammarException;
 
 import com.mahitotsu.brontes.api.AbstractSpringTest;
 import com.mahitotsu.brontes.api.entity.Account;
+import com.mahitotsu.brontes.api.entity.Transaction;
+import com.mahitotsu.brontes.api.entity.TransactionType;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -42,6 +45,20 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
                     assertEquals(accountNumber, account.getAccountNumber());
                     assertEquals(0L, account.getBalance());
                 })
+                .verifyComplete();
+        StepVerifier.create(this.accountRepository.listTransactions(branchNumber, accountNumber))
+                .recordWith(ArrayList::new)
+                .consumeRecordedWith(list -> {
+                    assertEquals(1, list.size());
+                    final Transaction tx = list.iterator().next();
+                    assertNotNull(tx.getTxId());
+                    assertNotNull(tx.getTxTimestamp());
+                    assertEquals(TransactionType.O, tx.getTxType());
+                    assertEquals(branchNumber, tx.getBranchNumber());
+                    assertEquals(accountNumber, tx.getAccountNumber());
+                    assertEquals(0L, tx.getAmount());
+                })
+                .expectNextCount(1L)
                 .verifyComplete();
     }
 
@@ -116,6 +133,7 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
 
         StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount1))
                 .assertNext(account -> {
+                    assertNotNull(account);
                     assertEquals(amount1, account.getBalance());
                 })
                 .verifyComplete();
@@ -123,14 +141,18 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         final int amount2 = SEED.nextInt(100);
         StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount2))
                 .assertNext(account -> {
+                    assertNotNull(account);
                     assertEquals(amount1 + amount2, account.getBalance());
                 })
                 .verifyComplete();
 
         final int amount3 = SEED.nextInt(amount1 + amount2);
-        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount3 * -1)
-                .block();
-        assertEquals(amount1 + amount2 - amount3, account.getBalance());
+        StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount3 * -1))
+                .assertNext(account -> {
+                    assertNotNull(account);
+                    assertEquals(amount1 + amount2 - amount3, account.getBalance());
+                })
+                .verifyComplete();
     }
 
     @Test
@@ -143,7 +165,6 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         StepVerifier.create(this.accountRepository.openAccount(branchNumber, accountNumber))
                 .expectNextCount(1)
                 .verifyComplete();
-
         StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount1))
                 .expectNextCount(1)
                 .verifyComplete();
@@ -163,12 +184,6 @@ public class PointEventRepositoryTest extends AbstractSpringTest {
         StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount))
                 .expectNextCount(0)
                 .verifyComplete();
-        StepVerifier.create(this.accountRepository.updateBalance(branchNumber, accountNumber, amount))
-                .verifyComplete();
-
-        final Account account = this.accountRepository.updateBalance(branchNumber, accountNumber, amount)
-                .block();
-        assertNull(account);
     }
 
     @Test
