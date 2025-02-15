@@ -58,7 +58,7 @@ public class RDBConfig {
     }
 
     @Bean
-    @Profile("drop-create")
+    @Profile("create-drop")
     public ConnectionFactoryInitializer connectionFactoryInitializer(final ConnectionFactory connectionFactory) {
 
         final DatabasePopulator creator = new ResourceDatabasePopulator(

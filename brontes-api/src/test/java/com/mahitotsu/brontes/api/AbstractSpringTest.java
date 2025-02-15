@@ -7,7 +7,7 @@ import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@ActiveProfiles({ "drop-create" })
+@ActiveProfiles({ "create-drop" })
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
 public abstract class AbstractSpringTest {
 
