@@ -1,14 +1,8 @@
 package com.mahitotsu.brontes.api.config;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
-import org.springframework.aop.Advisor;
-import org.springframework.aop.support.StaticMethodMatcherPointcutAdvisor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -17,21 +11,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Role;
-import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.lang.NonNull;
 import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer;
 import org.springframework.r2dbc.connection.init.DatabasePopulator;
 import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
+import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
 import reactor.core.publisher.Mono;
-import reactor.util.retry.RetrySpec;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dsql.DsqlUtilities;
@@ -72,10 +62,21 @@ public class RDBConfig {
     public ConnectionFactoryInitializer connectionFactoryInitializer(final ConnectionFactory connectionFactory) {
 
         final DatabasePopulator creator = new ResourceDatabasePopulator(
-                this.resourceLoader.getResource("classpath:initdb/drop-create/schema-drop.sql"),
                 this.resourceLoader.getResource("classpath:initdb/drop-create/schema-create.sql"));
-        final DatabasePopulator cleaner = new ResourceDatabasePopulator(
-                this.resourceLoader.getResource("classpath:initdb/drop-create/schema-drop.sql"));
+
+        final DatabasePopulator cleaner = new DatabasePopulator() {
+            @Override
+            @NonNull
+            public Mono<Void> populate(@NonNull final Connection connection) {
+                return Mono
+                        .from(connection.createStatement("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+                                .execute())
+                        .flatMapMany(result -> result.map(row -> row.get("tablename", String.class)))
+                        .flatMap(tablename -> connection.createStatement("DROP TABLE IF EXISTS " + tablename).execute())
+                        .onErrorResume(e -> Mono.empty())
+                        .then();
+            }
+        };
 
         final ConnectionFactoryInitializer initializer = new ConnectionFactoryInitializer();
         initializer.setConnectionFactory(connectionFactory);
@@ -83,34 +84,5 @@ public class RDBConfig {
         initializer.setDatabaseCleaner(cleaner);
 
         return initializer;
-    }
-
-    @Bean
-    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-    @Order(Integer.MAX_VALUE)
-    public Advisor r2dbcRetryAdvisor() {
-
-        final MethodInterceptor retryAppender = new MethodInterceptor() {
-            @Override
-            public Object invoke(MethodInvocation invocation) throws Throwable {
-                final Object result = invocation.proceed();
-                if (Mono.class.isInstance(result) == false) {
-                    return result;
-                }
-                final Mono<?> mono = Mono.class.cast(result);
-                return mono.retryWhen(RetrySpec.backoff(5, Duration.ofMillis(500))
-                        .filter(t -> CannotAcquireLockException.class.isInstance(t)));
-            }
-        };
-
-        return new StaticMethodMatcherPointcutAdvisor(retryAppender) {
-            @Override
-            public boolean matches(@NonNull final Method method, @NonNull final Class<?> targetClass) {
-                return targetClass.isAnnotationPresent(Repository.class)
-                        && Mono.class.isAssignableFrom(method.getReturnType())
-                        && Optional.ofNullable(method.getAnnotation(Transactional.class))
-                                .filter(tx -> tx.readOnly() == false).isPresent();
-            }
-        };
     }
 }
