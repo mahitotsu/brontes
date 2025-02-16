@@ -1,7 +1,9 @@
 DROP SCHEMA IF EXISTS idempotency_keys;
 CREATE TABLE IF NOT EXISTS idempotency_keys (
     idempotency_key UUID NOT NULL,
+    payload_hash BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_payload_hash_length CHECK (octet_length(payload_hash) = 4),
     PRIMARY KEY (idempotency_key)
 );
 
