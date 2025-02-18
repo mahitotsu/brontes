@@ -4,9 +4,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import org.apache.commons.codec.digest.XXHash32;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -52,28 +50,30 @@ public abstract class AbstractIdempotentService {
         return new MapBuilder();
     }
 
-    protected IdempotencyKey newIdempotencyKey(final UUID idemKey, final Map<String, Object> payload) {
+    protected IdempotencyKey newIdempotencyKey(final UUID idemKey, final long payloadHash) {
         final IdempotencyKey entity = new IdempotencyKey();
         entity.setIdempotencyKey(idemKey);
-        entity.setPayloadHash(this.calculatePayloadHash(payload));
+        entity.setPayloadHash(payloadHash);
         return entity;
     }
 
-    protected <T> Mono<T> executeWithIdempotency(final UUID idemKey, final Map<String, Object> payload,
-            final Callable<T> action) {
+    protected <T> Mono<? extends T> executeWithIdempotencyMono(final UUID idemKey, final Map<String, Object> payload,
+            final Supplier<Mono<T>> action) {
+        final long payloadHash = this.calculatePayloadHash(payload);
         return this.transactionalOperator.transactional(this.idempotencyKeyRepository.findById(idemKey)
-                .flatMap(entity -> entity.getPayloadHash() == this.calculatePayloadHash(payload) ? Mono.just(entity)
-                        : Mono.error(new RuntimeException()))
-                .switchIfEmpty(this.idempotencyKeyRepository.save(this.newIdempotencyKey(idemKey, payload)))
-                .then(Mono.fromCallable(action)))
-                .retryWhen(RetrySpec.backoff(5, Duration.ofMillis(300)).jitter(0.5));
+                .flatMap(entity -> entity.getPayloadHash() == payloadHash ? Mono.just(entity) : Mono.error(new RuntimeException()))
+                .switchIfEmpty(this.idempotencyKeyRepository.save(this.newIdempotencyKey(idemKey, payloadHash)))
+                .then(action.get())
+                .retryWhen(RetrySpec.backoff(5, Duration.ofMillis(300)).jitter(0.5)));
     }
 
-    protected <T> Flux<T> executeWithIdempotency(final UUID idemKey, final Map<String, Object> payload,
-            final Supplier<Stream<? extends T>> action) {
+    protected <T> Flux<? extends T> executeWithIdempotencyFlux(final UUID idemKey, final Map<String, Object> payload,
+            final Supplier<Flux<T>> action) {
+        final long payloadHash = this.calculatePayloadHash(payload);
         return this.transactionalOperator.transactional(this.idempotencyKeyRepository.findById(idemKey)
-                .switchIfEmpty(this.idempotencyKeyRepository.save(this.newIdempotencyKey(idemKey, payload)))
-                .thenMany(Flux.fromStream(action)))
-                .retryWhen(RetrySpec.backoff(5, Duration.ofMillis(300)).jitter(0.5));
+                .flatMap(entity -> entity.getPayloadHash() == payloadHash ? Mono.just(entity) : Mono.error(new RuntimeException()))
+                .switchIfEmpty(this.idempotencyKeyRepository.save(this.newIdempotencyKey(idemKey, payloadHash)))
+                .thenMany(action.get())
+                .retryWhen(RetrySpec.backoff(5, Duration.ofMillis(300)).jitter(0.5)));
     }
 }
