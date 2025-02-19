@@ -7,10 +7,10 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import lombok.Data;
 
-@Table
+@Table("idempotency_keys")
 @Data
 public class IdempotencyKey {
     @Id
     private UUID idempotencyKey;
-    private long payloadHash;
+    private byte[] payloadHash;
 }

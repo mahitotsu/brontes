@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS account_transactions (
     tx_type CHAR(1) NOT NULL CHECK (tx_type IN ('O', 'C', 'D', 'W')),
     branch_number CHAR(3) NOT NULL CHECK (branch_number ~ '^[0-9]{3}$'),
     account_number CHAR(7) NOT NULL CHECK (account_number ~ '^[0-9]{7}$'),
-    amount NUMERIC(15,2) NOT NULL CHECK (amount >= 0),
-    new_balance NUMERIC(15,2) NOT NULL CHECK (new_balance >= 0),
+    amount NUMERIC(15,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
+    new_balance NUMERIC(15,2) NOT NULL DEFAULT 0 CHECK (new_balance >= 0),
     UNIQUE (tx_seq, branch_number, account_number),
     PRIMARY KEY (tx_id)
 );

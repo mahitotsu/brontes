@@ -9,16 +9,21 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import lombok.Data;
 
-@Table
+@Table("account_transactions")
 @Data
 public class AccountTransaction {
+
+    public static enum TxType {
+        O, C, D, W
+    }
+
     @Id
     private UUID txId;
     private Long txSeq;
     private Instant txTime;
-    private Character txType;
-    private String branchNUmber;
+    private TxType txType;
+    private String branchNumber;
     private String accountNumber;
     private BigDecimal amount;
-    private BigDecimal newBigDecimal;
+    private BigDecimal newBalance;
 }
