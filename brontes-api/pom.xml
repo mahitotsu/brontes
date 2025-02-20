@@ -17,7 +17,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -25,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>io.awspring.cloud</groupId>
@@ -33,25 +33,16 @@
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
-            <artifactId>r2dbc-postgresql</artifactId>
+            <artifactId>postgresql</artifactId>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dsql</artifactId>
         </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-        </dependency>
         <!-- for testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -129,13 +120,10 @@
                 <configuration>
                     <argLine>-javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
-                        <SPRING_R2DBC_URL>r2dbc:postgresql://${aws.dsql.endpoint}/postgres</SPRING_R2DBC_URL>
-                        <SPRING_R2DBC_USERNAME>admin</SPRING_R2DBC_USERNAME>
-                        <SPRING_R2DBC_PROPERTIES_SSLMODE>REQUIRE</SPRING_R2DBC_PROPERTIES_SSLMODE>
-                        <SPRING_R2DBC_POOL_ENABLED>true</SPRING_R2DBC_POOL_ENABLED>
-                        <SPRING_R2DBC_POOL_INITIAL_SIZE>1</SPRING_R2DBC_POOL_INITIAL_SIZE>
-                        <SPRING_R2DBC_POOL_MAX-SIZE>16</SPRING_R2DBC_POOL_MAX-SIZE>
-                        <SPRING_R2DBC_POOL_MAX-IDLE-TIME>10m</SPRING_R2DBC_POOL_MAX-IDLE-TIME>
+                        <SPRING_DATASOURCE_URL>jdbc:postgresql://${aws.dsql.endpoint}/postgres</SPRING_DATASOURCE_URL>
+                        <SPRING_DATASOURCE_USERNAME>admin</SPRING_DATASOURCE_USERNAME>
+                        <SPRING_DATASOURCE_PASSWORD>dummy</SPRING_DATASOURCE_PASSWORD>
+                        <SPRING_DATASOURCE_PROPERTIES_SSLMODE>REQUIRE</SPRING_DATASOURCE_PROPERTIES_SSLMODE>
                         <SPRING_CLOUD_AWS_CREDENTIALS_PROFILE_NAME>default</SPRING_CLOUD_AWS_CREDENTIALS_PROFILE_NAME>
                     </environmentVariables>
                 </configuration>
