@@ -5,7 +5,12 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.postgresql.Driver;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
@@ -16,8 +21,8 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
 import org.springframework.lang.NonNull;
 
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import com.zaxxer.hikari.SQLExceptionOverride;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -26,22 +31,59 @@ import software.amazon.awssdk.services.dsql.DsqlUtilities;
 @Configuration
 public class DbConfig {
 
-    static public class DsqlExceptionOverride implements SQLExceptionOverride {
-
-        @java.lang.Override
-        public Override adjudicate(final SQLException e) {
-            final String sqlState = e.getSQLState();
-            if ("0C000".equals(sqlState) || "0C001".equals(sqlState) || sqlState.matches("0A\\d{3}")) {
-                return Override.DO_NOT_EVICT;
-            }
-            return Override.CONTINUE_EVICT;
-        }
-    };
-
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource")
     public DataSourceProperties dataSourceProperties() {
-        return new DataSourceProperties();
+
+        final DataSourceProperties props = new DataSourceProperties();
+        props.setType(HikariDataSource.class);
+
+        final ProxyFactory factory = new ProxyFactory();
+        factory.setTarget(props);
+        factory.addAdvice(new MethodInterceptor() {
+            @Override
+            public Object invoke(MethodInvocation invocation) throws Throwable {
+                final String name = invocation.getMethod().getName();
+                switch (name) {
+                    case "setType":
+                        throw new UnsupportedOperationException("This property cannot be overwritten.");
+                    default:
+                        return invocation.proceed();
+                }
+            }
+        });
+
+        return DataSourceProperties.class.cast(factory.getProxy());
+    }
+
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource.hikari")
+    public HikariConfig hikariConfig() {
+
+        final HikariConfig config = new HikariConfig();
+        // Setting default values ​​for properties that require values
+        config.setDriverClassName(Driver.class.getCanonicalName());
+        config.setExceptionOverrideClassName(DsqlExceptionOverride.class.getCanonicalName());
+        config.setMaximumPoolSize(16);
+        config.setMinimumIdle(0);
+
+        final ProxyFactory factory = new ProxyFactory();
+        factory.setTarget(config);
+        factory.addAdvice(new MethodInterceptor() {
+            @Override
+            public Object invoke(MethodInvocation invocation) throws Throwable {
+                final String name = invocation.getMethod().getName();
+                switch (name) {
+                    case "setDriverClassName":
+                    case "setExceptionOverrideClassName":
+                        throw new UnsupportedOperationException("This property cannot be overwritten.");
+                    default:
+                        return invocation.proceed();
+                }
+            }
+        });
+
+        return HikariConfig.class.cast(factory.getProxy());
     }
 
     @Bean
@@ -84,16 +126,14 @@ public class DbConfig {
     public DataSource dataSource(@Qualifier("targetDataSource") final DataSource targetDataSource) {
 
         final DataSourceProperties dataSourceProperties = dataSourceProperties();
-        final Class<? extends DataSource> dataSourceType = dataSourceProperties.getType();
-        if (dataSourceType != null && HikariDataSource.class.isAssignableFrom(dataSourceType)) {
-            throw new UnsupportedOperationException();
-        }
-
         final HikariDataSource hikariDataSource = dataSourceProperties.initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
+
+        final HikariConfig hikariConfig = this.hikariConfig();
+        BeanUtils.copyProperties(hikariConfig, hikariDataSource);
+
         hikariDataSource.setDataSource(targetDataSource);
-        hikariDataSource.setExceptionOverrideClassName(DsqlExceptionOverride.class.getName());
         return hikariDataSource;
     }
 }
