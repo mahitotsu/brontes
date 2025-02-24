@@ -1,6 +1,7 @@
 package com.mahitotsu.brontes.api.infra;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import javax.sql.DataSource;
@@ -18,7 +19,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
+import org.springframework.jdbc.datasource.init.DataSourceInitializer;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.lang.NonNull;
 
 import com.zaxxer.hikari.HikariConfig;
@@ -30,6 +35,9 @@ import software.amazon.awssdk.services.dsql.DsqlUtilities;
 
 @Configuration
 public class DbConfig {
+
+    @Autowired
+    private ResourceLoader resourceLoader;
 
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource")
@@ -135,5 +143,27 @@ public class DbConfig {
 
         hikariDataSource.setDataSource(targetDataSource);
         return hikariDataSource;
+    }
+
+    @Bean
+    @Profile("create-drop")
+    public DataSourceInitializer dataSourceInitializer(final DataSource dataSource) {
+
+        final DataSourceInitializer initializer = new DataSourceInitializer();
+
+        initializer.setDataSource(dataSource);
+        initializer.setDatabasePopulator(
+                new ResourceDatabasePopulator(this.resourceLoader.getResource("classpath:schema.sql")));
+        initializer.setDatabaseCleaner((con) -> {
+            String fetchTablesQuery = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'";
+            ResultSet resultSet = con.createStatement().executeQuery(fetchTablesQuery);
+            while (resultSet.next()) {
+                String tableName = resultSet.getString("tablename");
+                String dropTableQuery = "DROP TABLE IF EXISTS " + tableName + " CASCADE";
+                con.createStatement().executeUpdate(dropTableQuery);
+            }
+        });
+
+        return initializer;
     }
 }

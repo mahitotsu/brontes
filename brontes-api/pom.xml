@@ -59,6 +59,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -118,7 +119,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                    <argLine>-javaagent:"${org.mockito:mockito-core:jar}" -Dspring.profiles.active=create-drop</argLine>
                     <environmentVariables>
                         <SPRING_DATASOURCE_URL>jdbc:postgresql://${aws.dsql.endpoint}/postgres</SPRING_DATASOURCE_URL>
                         <SPRING_DATASOURCE_USERNAME>admin</SPRING_DATASOURCE_USERNAME>
