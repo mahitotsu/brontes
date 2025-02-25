@@ -3,6 +3,7 @@ package com.mahitotsu.brontes.api.entity;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,32 @@ import lombok.Setter;
 @Data
 @Setter(AccessLevel.PRIVATE)
 public class AccountTransaction {
+
+    public static AccountTransaction newEntity(final Integer branchNumber, final Integer accountNumber, final BigDecimal amount) {
+
+        final AccountTransaction entity = new AccountTransaction();
+        entity.setBranchNumber(branchNumber);
+        entity.setAccountNumber(accountNumber);
+        entity.setAmount(amount);
+
+        return entity;
+    }
+
+    public static AccountTransaction commitTransactions(final Stream<AccountTransaction> entities) {
+
+        if (entities == null) {
+            return null;
+        }
+
+        final AccountTransaction[] txArray = new AccountTransaction[2];
+        entities.forEach(tx -> {
+            txArray[1] = tx;
+            txArray[1].commit(txArray[0]);
+            txArray[0] = txArray[1];
+        });
+
+        return txArray[1];
+    }
 
     public static enum TxStatus {
         REGISTERED, ACCEPTED, REJECTED,
@@ -52,43 +79,34 @@ public class AccountTransaction {
     @Column(name = "new_balance", insertable = false, updatable = true)
     private BigDecimal newBalance;
 
-    @SuppressWarnings("unused")
     private AccountTransaction() {
     }
 
-    public AccountTransaction(final Integer branchNumber, final Integer accountNumber, final BigDecimal amount) {
-        this.branchNumber = branchNumber;
-        this.accountNumber = accountNumber;
-        this.amount = amount;
-    }
-
-    public void accept(final AccountTransaction previousTx) {
+    public void commit(final AccountTransaction previousTx) {
 
         if (previousTx == null) {
-            this.txStatus = TxStatus.ACCEPTED;
-            this.txSequence = 1;
-            this.newBalance = new BigDecimal(this.amount.toString());
+            if (this.amount.compareTo(BigDecimal.ZERO) < 0) {
+                this.txStatus = TxStatus.REJECTED;
+                this.txSequence = 1;
+                this.newBalance = BigDecimal.ZERO;
+            } else {
+                this.txStatus = TxStatus.ACCEPTED;
+                this.txSequence = 1;
+                this.newBalance = new BigDecimal(this.amount.toString());
+            }
         } else if (previousTx.getTxStatus() == TxStatus.REGISTERED) {
             throw new IllegalStateException("The specified previous transaction status is not committed.");
         } else {
-            this.txStatus = TxStatus.ACCEPTED;
-            this.txSequence = previousTx.getTxSequence() + 1;
-            this.newBalance = previousTx.newBalance.add(this.amount);
-        }
-    }
-
-    public void reject(final AccountTransaction previousTx) {
-
-        if (previousTx == null) {
-            this.txStatus = TxStatus.REJECTED;
-            this.txSequence = 1;
-            this.newBalance = BigDecimal.ZERO;
-        } else if (previousTx.getTxStatus() == TxStatus.REGISTERED) {
-            throw new IllegalStateException("The specified previous transaction status is not committed.");
-        } else {
-            this.txStatus = TxStatus.REJECTED;
-            this.txSequence = previousTx.getTxSequence() + 1;
-            this.newBalance = new BigDecimal(previousTx.getNewBalance().toString());
+            final BigDecimal newBalance = previousTx.getNewBalance().add(this.amount);
+            if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                this.txStatus = TxStatus.REJECTED;
+                this.txSequence = previousTx.getTxSequence() + 1;
+                this.newBalance = new BigDecimal(previousTx.getNewBalance().toString());
+            } else {
+                this.txStatus = TxStatus.ACCEPTED;
+                this.txSequence = previousTx.getTxSequence() + 1;
+                this.newBalance = newBalance;
+            }
         }
     }
 }

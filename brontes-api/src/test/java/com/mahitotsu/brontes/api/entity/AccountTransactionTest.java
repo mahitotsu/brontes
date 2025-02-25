@@ -1,11 +1,10 @@
 package com.mahitotsu.brontes.api.entity;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import org.junit.jupiter.api.Test;
@@ -48,7 +47,7 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        final AccountTransaction newEntity = new AccountTransaction(branchNumber, accuntNumber, amount);
+        final AccountTransaction newEntity = AccountTransaction.newEntity(branchNumber, accuntNumber, amount);
         this.txOperations.executeWithoutResult(tx -> this.entityManager.persist(newEntity));
         assertNotNull(newEntity.getTxId());
 
@@ -69,7 +68,7 @@ public class AccountTransactionTest extends AbstractTestBase {
         final BigDecimal amount = this.randomAmount().abs();
 
         assertThrows(DataIntegrityViolationException.class, () -> this.txOperations.executeWithoutResult(
-                tx -> this.entityManager.persist(new AccountTransaction(branchNumber, accuntNumber, amount))));
+                tx -> this.entityManager.persist(AccountTransaction.newEntity(branchNumber, accuntNumber, amount))));
     }
 
     @SuppressWarnings("unused")
@@ -81,7 +80,7 @@ public class AccountTransactionTest extends AbstractTestBase {
         final BigDecimal amount = this.randomAmount().abs();
 
         assertThrows(DataIntegrityViolationException.class, () -> this.txOperations.executeWithoutResult(
-                tx -> this.entityManager.persist(new AccountTransaction(branchNumber, accuntNumber, amount))));
+                tx -> this.entityManager.persist(AccountTransaction.newEntity(branchNumber, accuntNumber, amount))));
     }
 
     @SuppressWarnings("unused")
@@ -93,7 +92,7 @@ public class AccountTransactionTest extends AbstractTestBase {
         final BigDecimal amount = this.randomAmount().abs();
 
         assertThrows(DataIntegrityViolationException.class, () -> this.txOperations.executeWithoutResult(
-                tx -> this.entityManager.persist(new AccountTransaction(branchNumber, accuntNumber, amount))));
+                tx -> this.entityManager.persist(AccountTransaction.newEntity(branchNumber, accuntNumber, amount))));
     }
 
     @SuppressWarnings("unused")
@@ -105,22 +104,22 @@ public class AccountTransactionTest extends AbstractTestBase {
         final BigDecimal amount = this.randomAmount().abs();
 
         assertThrows(DataIntegrityViolationException.class, () -> this.txOperations.executeWithoutResult(
-                tx -> this.entityManager.persist(new AccountTransaction(branchNumber, accuntNumber, amount))));
+                tx -> this.entityManager.persist(AccountTransaction.newEntity(branchNumber, accuntNumber, amount))));
     }
 
     @SuppressWarnings("unused")
     @Test
-    public void testInsertNewEntityAndAccept() {
+    public void testInsertNewEntity_Acceptable() {
 
         final Integer branchNumber = this.randomBranchNumber();
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        final AccountTransaction newEntity = new AccountTransaction(branchNumber, accuntNumber, amount);
+        final AccountTransaction newEntity = AccountTransaction.newEntity(branchNumber, accuntNumber, amount);
         this.txOperations.executeWithoutResult(tx -> this.entityManager.persist(newEntity));
         final AccountTransaction initialEntity = this.entityManager.find(AccountTransaction.class, newEntity.getTxId());
 
-        initialEntity.accept(null);
+        initialEntity.commit(null);
         this.txOperations.executeWithoutResult(tx -> this.entityManager.merge(initialEntity));
         final AccountTransaction acceptedEntity = this.entityManager.find(AccountTransaction.class,
                 newEntity.getTxId());
@@ -133,17 +132,17 @@ public class AccountTransactionTest extends AbstractTestBase {
 
     @SuppressWarnings("unused")
     @Test
-    public void testInsertNewEntityAndReject() {
+    public void testInsertNewEntity_Unacceptable() {
 
         final Integer branchNumber = this.randomBranchNumber();
         final Integer accuntNumber = this.randomAccountNumber();
-        final BigDecimal amount = this.randomAmount().abs();
+        final BigDecimal amount = this.randomAmount().abs().negate();
 
-        final AccountTransaction newEntity = new AccountTransaction(branchNumber, accuntNumber, amount);
+        final AccountTransaction newEntity = AccountTransaction.newEntity(branchNumber, accuntNumber, amount);
         this.txOperations.executeWithoutResult(tx -> this.entityManager.persist(newEntity));
         final AccountTransaction initialEntity = this.entityManager.find(AccountTransaction.class, newEntity.getTxId());
 
-        initialEntity.reject(null);
+        initialEntity.commit(null);
         this.txOperations.executeWithoutResult(tx -> this.entityManager.merge(initialEntity));
         final AccountTransaction rejectedEntity = this.entityManager.find(AccountTransaction.class,
                 newEntity.getTxId());
@@ -156,38 +155,43 @@ public class AccountTransactionTest extends AbstractTestBase {
 
     @SuppressWarnings("unused")
     @Test
-    public void testInsertNewEntityAndAccept_NegativeAmount() {
+    public void testCommitTransactions() {
 
         final Integer branchNumber = this.randomBranchNumber();
-        final Integer accuntNumber = this.randomAccountNumber();
-        final BigDecimal amount = this.randomAmount().abs().negate();
+        final Integer accountNumber = this.randomAccountNumber();
 
-        final AccountTransaction newEntity = new AccountTransaction(branchNumber, accuntNumber, amount);
-        this.txOperations.executeWithoutResult(tx -> this.entityManager.persist(newEntity));
-        final AccountTransaction initialEntity = this.entityManager.find(AccountTransaction.class, newEntity.getTxId());
+        final List<Integer> amounts = Arrays.asList(100, 200, -50, 100, -300, -100, 100);
+        amounts.forEach(amount -> this.txOperations.executeWithoutResult(tx -> this.entityManager
+                .persist(AccountTransaction.newEntity(branchNumber, accountNumber, new BigDecimal(amount)))));
 
-        initialEntity.accept(null);
-        assertThrows(DataIntegrityViolationException.class, () -> this.txOperations
-                .executeWithoutResult(tx -> this.entityManager.merge(initialEntity)));
-    }
+        final AccountTransaction lastEntity = this.txOperations.execute(tx -> AccountTransaction.commitTransactions(
+                this.entityManager.createQuery("""
+                        SELECT atx FROM AccountTransaction atx
+                        WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber AND txSequence IS NULL
+                        ORDER BY txTimestamp
+                        """, AccountTransaction.class)
+                        .setParameter("branchNumber", branchNumber)
+                        .setParameter("accountNumber", accountNumber)
+                        .getResultStream()));
 
-    @SuppressWarnings("unused")
-    @Test
-    public void testInsertNewEntityAndReject_NegativeAmount() {
+        assertNotNull(lastEntity);
+        assertEquals(new BigDecimal("150.00"), lastEntity.getNewBalance());
 
-        final Integer branchNumber = this.randomBranchNumber();
-        final Integer accuntNumber = this.randomAccountNumber();
-        final BigDecimal amount = this.randomAmount().abs().negate();
+        this.txOperations.executeWithoutResult(tx -> {
+            final List<AccountTransaction> txList = this.entityManager.createQuery("""
+                    SELECT atx FROM AccountTransaction atx
+                    WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber AND txSequence IS NOT NULL
+                    ORDER BY txSequence
+                    """, AccountTransaction.class)
+                    .setParameter("branchNumber", branchNumber)
+                    .setParameter("accountNumber", accountNumber)
+                    .getResultList();
+            assertEquals(amounts.size(), txList.size());
 
-        final AccountTransaction newEntity = new AccountTransaction(branchNumber, accuntNumber, amount);
-        this.txOperations.executeWithoutResult(tx -> this.entityManager.persist(newEntity));
-        final AccountTransaction initialEntity = this.entityManager.find(AccountTransaction.class, newEntity.getTxId());
-
-        initialEntity.reject(null);
-        this.txOperations.executeWithoutResult(tx -> this.entityManager.merge(initialEntity));
-        final AccountTransaction rejectedEntity = this.entityManager.find(AccountTransaction.class,
-                newEntity.getTxId());
-
-        assertEquals(new BigDecimal("0.00"), rejectedEntity.getNewBalance());
+            final AccountTransaction rejectedTx = txList.get(5);
+            assertEquals(TxStatus.REJECTED, rejectedTx.getTxStatus());
+            assertEquals(new BigDecimal("50.00"), rejectedTx.getNewBalance());
+            assertEquals(rejectedTx.getNewBalance(), txList.get(4).getNewBalance());
+        });
     }
 }
