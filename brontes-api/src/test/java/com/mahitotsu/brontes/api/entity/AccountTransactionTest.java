@@ -165,6 +165,7 @@ public class AccountTransactionTest extends AbstractTestBase {
                 .persist(AccountTransaction.newEntity(branchNumber, accountNumber, new BigDecimal(amount)))));
 
         final AccountTransaction lastEntity = this.txOperations.execute(tx -> AccountTransaction.commitTransactions(
+                null,
                 this.entityManager.createQuery("""
                         SELECT atx FROM AccountTransaction atx
                         WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber AND txSequence IS NULL
@@ -173,8 +174,9 @@ public class AccountTransactionTest extends AbstractTestBase {
                         .setParameter("branchNumber", branchNumber)
                         .setParameter("accountNumber", accountNumber)
                         .getResultStream()));
-
         assertNotNull(lastEntity);
+        assertEquals(TxStatus.ACCEPTED, lastEntity.getTxStatus());
+        assertEquals(amounts.size(), lastEntity.getTxSequence());
         assertEquals(new BigDecimal("150.00"), lastEntity.getNewBalance());
 
         this.txOperations.executeWithoutResult(tx -> {
@@ -190,6 +192,7 @@ public class AccountTransactionTest extends AbstractTestBase {
 
             final AccountTransaction rejectedTx = txList.get(5);
             assertEquals(TxStatus.REJECTED, rejectedTx.getTxStatus());
+            assertEquals(6, rejectedTx.getTxSequence());
             assertEquals(new BigDecimal("50.00"), rejectedTx.getNewBalance());
             assertEquals(rejectedTx.getNewBalance(), txList.get(4).getNewBalance());
         });

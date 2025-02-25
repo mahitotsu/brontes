@@ -22,7 +22,8 @@ import lombok.Setter;
 @Setter(AccessLevel.PRIVATE)
 public class AccountTransaction {
 
-    public static AccountTransaction newEntity(final Integer branchNumber, final Integer accountNumber, final BigDecimal amount) {
+    public static AccountTransaction newEntity(final Integer branchNumber, final Integer accountNumber,
+            final BigDecimal amount) {
 
         final AccountTransaction entity = new AccountTransaction();
         entity.setBranchNumber(branchNumber);
@@ -32,14 +33,17 @@ public class AccountTransaction {
         return entity;
     }
 
-    public static AccountTransaction commitTransactions(final Stream<AccountTransaction> entities) {
+    public static AccountTransaction commitTransactions(final AccountTransaction lastCommittedTx,
+            final Stream<AccountTransaction> uncommittedTxStream) {
 
-        if (entities == null) {
+        if (uncommittedTxStream == null) {
             return null;
         }
 
         final AccountTransaction[] txArray = new AccountTransaction[2];
-        entities.forEach(tx -> {
+        txArray[0] = lastCommittedTx;
+
+        uncommittedTxStream.forEach(tx -> {
             txArray[1] = tx;
             txArray[1].commit(txArray[0]);
             txArray[0] = txArray[1];
