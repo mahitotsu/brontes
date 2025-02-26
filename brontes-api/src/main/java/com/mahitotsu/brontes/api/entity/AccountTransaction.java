@@ -14,12 +14,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "account_transactions")
 @Data
 @Setter(AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class AccountTransaction {
 
     public static AccountTransaction newEntity(final Integer branchNumber, final Integer accountNumber,
@@ -37,19 +39,21 @@ public class AccountTransaction {
             final Stream<AccountTransaction> uncommittedTxStream) {
 
         if (uncommittedTxStream == null) {
-            return null;
+            return lastCommittedTx;
         }
 
         final AccountTransaction[] txArray = new AccountTransaction[2];
-        txArray[0] = lastCommittedTx;
+        final int previous= 0;
+        final int next = 1;
 
+        txArray[previous] = lastCommittedTx;
         uncommittedTxStream.forEach(tx -> {
-            txArray[1] = tx;
-            txArray[1].commit(txArray[0]);
-            txArray[0] = txArray[1];
+            txArray[next] = tx;
+            txArray[next].commit(txArray[previous]);
+            txArray[previous] = txArray[next];
         });
 
-        return txArray[1];
+        return txArray[next];
     }
 
     public static enum TxStatus {
@@ -82,9 +86,6 @@ public class AccountTransaction {
 
     @Column(name = "new_balance", insertable = false, updatable = true)
     private BigDecimal newBalance;
-
-    private AccountTransaction() {
-    }
 
     public void commit(final AccountTransaction previousTx) {
 

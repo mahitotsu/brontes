@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS account_transactions;
 CREATE TABLE IF NOT EXISTS account_transactions (
     -- immutable columns, set by system
     tx_id UUID NOT NULL DEFAULT gen_random_uuid(),
-    tx_timestamp TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
+    tx_timestamp TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     -- immutable columns, set by user
     branch_number SMALLINT NOT NULL CHECK (
         branch_number >= 0
