@@ -1,11 +1,9 @@
 package com.mahitotsu.brontes.api.repository;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -18,15 +16,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.support.TransactionOperations;
 
 import com.mahitotsu.brontes.api.AbstractTestBase;
-import com.mahitotsu.brontes.api.entity.AccountTransaction;
-import com.mahitotsu.brontes.api.entity.AccountTransaction.TxStatus;
+import com.mahitotsu.brontes.api.entity.AccountTx;
+import com.mahitotsu.brontes.api.entity.AccountTx.TxStatus;
 
-public class AccountTransactionTest extends AbstractTestBase {
+public class AccountTxRepositoryTest extends AbstractTestBase {
 
     private static final Random RANDOM = new Random();
 
     @Autowired
-    private AccountTransactionRepository accountTransactionRepository;
+    private AccountTxRepository accountTxRepository;
 
     @Autowired
     private TransactionOperations txOperations;
@@ -50,16 +48,16 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        final AccountTransaction newEntity = AccountTransaction.newEntity(branchNumber, accuntNumber, amount);
+        final AccountTx newEntity = AccountTx.newEntity(branchNumber, accuntNumber, amount);
         assertNull(newEntity.getTxId());
 
-        final AccountTransaction savedEntity = this.accountTransactionRepository.save(newEntity);
+        final AccountTx savedEntity = this.accountTxRepository.save(newEntity);
         assertNotNull(savedEntity.getTxId());
         assertNull(savedEntity.getTxTimestamp());
 
-        final AccountTransaction foundEntity = this.accountTransactionRepository.findById(savedEntity.getTxId()).get();
+        final AccountTx foundEntity = this.accountTxRepository.findById(savedEntity.getTxId()).get();
         assertNotNull(foundEntity.getTxTimestamp());
-        assertEquals(AccountTransaction.TxStatus.REGISTERED, foundEntity.getTxStatus());
+        assertEquals(AccountTx.TxStatus.REGISTERED, foundEntity.getTxStatus());
         assertNull(foundEntity.getTxSequence());
         assertNull(foundEntity.getNewBalance());
     }
@@ -71,8 +69,8 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        assertThrows(DataIntegrityViolationException.class, () -> this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)));
+        assertThrows(DataIntegrityViolationException.class, () -> this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)));
     }
 
     @Test
@@ -82,8 +80,8 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        assertThrows(DataIntegrityViolationException.class, () -> this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)));
+        assertThrows(DataIntegrityViolationException.class, () -> this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)));
     }
 
     @Test
@@ -93,8 +91,8 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = null;
         final BigDecimal amount = this.randomAmount().abs();
 
-        assertThrows(DataIntegrityViolationException.class, () -> this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)));
+        assertThrows(DataIntegrityViolationException.class, () -> this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)));
     }
 
     @Test
@@ -104,8 +102,8 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber() + 10000000;
         final BigDecimal amount = this.randomAmount().abs();
 
-        assertThrows(DataIntegrityViolationException.class, () -> this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)));
+        assertThrows(DataIntegrityViolationException.class, () -> this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)));
     }
 
     @Test
@@ -115,14 +113,14 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
-        final UUID txId = this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)).getTxId();
-        final AccountTransaction initialEntity = this.accountTransactionRepository.findById(txId).get();
+        final UUID txId = this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)).getTxId();
+        final AccountTx initialEntity = this.accountTxRepository.findById(txId).get();
 
         initialEntity.commit(null);
-        this.accountTransactionRepository.save(initialEntity);
+        this.accountTxRepository.save(initialEntity);
 
-        final AccountTransaction acceptedEntity = this.accountTransactionRepository.findById(txId).get();
+        final AccountTx acceptedEntity = this.accountTxRepository.findById(txId).get();
         assertNotNull(acceptedEntity);
         assertEquals(TxStatus.ACCEPTED, acceptedEntity.getTxStatus());
         assertEquals(1, acceptedEntity.getTxSequence());
@@ -136,14 +134,14 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs().negate();
 
-        final UUID txId = this.accountTransactionRepository
-                .save(AccountTransaction.newEntity(branchNumber, accuntNumber, amount)).getTxId();
-        final AccountTransaction initialEntity = this.accountTransactionRepository.findById(txId).get();
+        final UUID txId = this.accountTxRepository
+                .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)).getTxId();
+        final AccountTx initialEntity = this.accountTxRepository.findById(txId).get();
 
         initialEntity.commit(null);
-        this.accountTransactionRepository.save(initialEntity);
+        this.accountTxRepository.save(initialEntity);
 
-        final AccountTransaction rejectedEntity = this.accountTransactionRepository.findById(txId).get();
+        final AccountTx rejectedEntity = this.accountTxRepository.findById(txId).get();
         assertNotNull(rejectedEntity);
         assertEquals(TxStatus.REJECTED, rejectedEntity.getTxStatus());
         assertEquals(1, rejectedEntity.getTxSequence());
@@ -158,30 +156,32 @@ public class AccountTransactionTest extends AbstractTestBase {
         final Integer accountNumber = this.randomAccountNumber();
 
         final List<Integer> amounts = Arrays.asList(100, 200, -50, 100, -300, -100, 100);
-        this.accountTransactionRepository.saveAll(
-                amounts.stream().map(a -> AccountTransaction.newEntity(branchNumber, accountNumber, new BigDecimal(a)))
+        this.accountTxRepository.saveAll(
+                amounts.stream().map(a -> AccountTx.newEntity(branchNumber, accountNumber, new BigDecimal(a)))
                         .collect(Collectors.toList()));
 
-        final AccountTransaction lastEntity = this.txOperations.execute(tx -> AccountTransaction.commitTransactions(
-                null, this.accountTransactionRepository.findAllUncommittedTransactions(branchNumber, accountNumber)));
+        final AccountTx lastEntity = this.txOperations.execute(tx -> AccountTx.commitTransactions(
+                null, this.accountTxRepository.findAllUncommittedTransactions(branchNumber, accountNumber,
+                        ZonedDateTime.now().plusDays(1))));
         assertNotNull(lastEntity);
         assertEquals(TxStatus.ACCEPTED, lastEntity.getTxStatus());
         assertEquals(amounts.size(), lastEntity.getTxSequence());
         assertEquals(new BigDecimal("150.00"), lastEntity.getNewBalance());
 
         this.txOperations.executeWithoutResult(tx -> {
-            final List<AccountTransaction> txList = this.accountTransactionRepository
-                    .findAllCommittedTransactions(branchNumber, accountNumber).collect(Collectors.toList());
+            final List<AccountTx> txList = this.accountTxRepository
+                    .findAllCommittedTransactions(branchNumber, accountNumber, lastEntity.getTxTimestamp())
+                    .collect(Collectors.toList());
             assertEquals(amounts.size(), txList.size());
 
-            final AccountTransaction rejectedTx = txList.get(5);
+            final AccountTx rejectedTx = txList.get(5);
             assertEquals(TxStatus.REJECTED, rejectedTx.getTxStatus());
             assertEquals(6, rejectedTx.getTxSequence());
             assertEquals(new BigDecimal("50.00"), rejectedTx.getNewBalance());
             assertEquals(rejectedTx.getNewBalance(), txList.get(4).getNewBalance());
         });
 
-        final AccountTransaction lastEntity2 = this.accountTransactionRepository
+        final AccountTx lastEntity2 = this.accountTxRepository
                 .findOneLastCommittedTransaction(branchNumber, accountNumber).get();
         assertEquals(lastEntity, lastEntity2);
     }

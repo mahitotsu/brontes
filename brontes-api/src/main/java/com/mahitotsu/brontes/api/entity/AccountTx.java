@@ -22,12 +22,12 @@ import lombok.Setter;
 @Data
 @Setter(AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class AccountTransaction {
+public class AccountTx {
 
-    public static AccountTransaction newEntity(final Integer branchNumber, final Integer accountNumber,
+    public static AccountTx newEntity(final Integer branchNumber, final Integer accountNumber,
             final BigDecimal amount) {
 
-        final AccountTransaction entity = new AccountTransaction();
+        final AccountTx entity = new AccountTx();
         entity.setBranchNumber(branchNumber);
         entity.setAccountNumber(accountNumber);
         entity.setAmount(amount);
@@ -35,14 +35,14 @@ public class AccountTransaction {
         return entity;
     }
 
-    public static AccountTransaction commitTransactions(final AccountTransaction lastCommittedTx,
-            final Stream<AccountTransaction> uncommittedTxStream) {
+    public static AccountTx commitTransactions(final AccountTx lastCommittedTx,
+            final Stream<AccountTx> uncommittedTxStream) {
 
         if (uncommittedTxStream == null) {
             return lastCommittedTx;
         }
 
-        final AccountTransaction[] txArray = new AccountTransaction[2];
+        final AccountTx[] txArray = new AccountTx[2];
         final int previous= 0;
         final int next = 1;
 
@@ -87,7 +87,7 @@ public class AccountTransaction {
     @Column(name = "new_balance", insertable = false, updatable = true)
     private BigDecimal newBalance;
 
-    public void commit(final AccountTransaction previousTx) {
+    public void commit(final AccountTx previousTx) {
 
         if (previousTx == null) {
             if (this.amount.compareTo(BigDecimal.ZERO) < 0) {

@@ -28,6 +28,14 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.awspring.cloud</groupId>
             <artifactId>spring-cloud-aws-starter</artifactId>
         </dependency>
@@ -125,7 +133,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-javaagent:"${org.mockito:mockito-core:jar}" -Xshare:off -Dspring.profiles.active=create-drop</argLine>
+                    <argLine>-javaagent:"${org.mockito:mockito-core:jar}" -Xshare:off
+                        -Dspring.profiles.active=create-drop</argLine>
                     <environmentVariables>
                         <SPRING_DATASOURCE_URL>jdbc:postgresql://${aws.dsql.endpoint}/postgres</SPRING_DATASOURCE_URL>
                         <SPRING_DATASOURCE_USERNAME>admin</SPRING_DATASOURCE_USERNAME>
