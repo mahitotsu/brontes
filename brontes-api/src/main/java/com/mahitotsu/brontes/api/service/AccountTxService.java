@@ -1,12 +1,16 @@
 package com.mahitotsu.brontes.api.service;
 
 import java.time.ZonedDateTime;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import com.mahitotsu.brontes.api.entity.AccountTx;
+
+import jakarta.validation.constraints.Min;
 
 @Service
 @Validated
@@ -21,8 +25,8 @@ public class AccountTxService {
             return false;
         }
 
-        final AccountTx entity = this.accountTxOperations.registerAccountTx(branchCode, accountNumber, 0);
-        this.accountTxOperations.commitAccountTx(entity.getTxId());
+        final UUID txId = this.accountTxOperations.registerAccountTx(branchCode, accountNumber, 0);
+        this.accountTxOperations.commitAccountTx(txId);
 
         return true;
     }
@@ -31,27 +35,38 @@ public class AccountTxService {
         // This method is not yet implemented.
     }
 
-    public Integer deposit(final String branchCode, final String accountNumber, final int amount) {
+    public Long deposit(final String branchCode, final String accountNumber, @Min(0) final long amount) {
         return this.tx(branchCode, accountNumber, amount);
     }
 
-    public Integer withdraw(final String branchCode, final String accountNumber, final int amount) {
+    public Long withdraw(final String branchCode, final String accountNumber, @Min(0) final long amount) {
         return this.tx(branchCode, accountNumber, amount * -1);
     }
 
-    private Integer tx(final String branchCode, final String accountNumber, final int amount) {
+    private Long tx(final String branchCode, final String accountNumber, final long amount) {
 
-        final AccountTx entity = this.accountTxOperations.registerAccountTx(branchCode, accountNumber, amount);
-        this.accountTxOperations.commitAccountTx(entity.getTxId());
+        final UUID txId = this.accountTxOperations.registerAccountTx(branchCode, accountNumber, amount);
 
-        final Integer balance = this.accountTxOperations.regirievePastBalance(entity.getTxId());
-        if (balance == null) {
-            throw new IllegalStateException("An unexpected situation has occurred.");
+        AccountTx atx = null;
+        while (atx == null) {
+            try {
+                atx = this.accountTxOperations.commitAccountTx(txId);
+            } catch (CannotAcquireLockException e) {
+                continue;
+            }
         }
-        return balance;
+
+        switch (atx.getTxStatus()) {
+            case ACCEPTED:
+                return atx.getNewBalance().longValue();
+            case REJECTED:
+                throw new AccountTxRejectedException("This transaction is rejected.");
+            default:
+                throw new IllegalStateException("An unexpected situation has occurred.");
+        }
     }
 
-    public Integer getBalance(final String branchCode, final String accountNumber) {
+    public Long getBalance(final String branchCode, final String accountNumber) {
         return this.accountTxOperations.getLastBalance(branchCode, accountNumber, ZonedDateTime.now());
     }
 }

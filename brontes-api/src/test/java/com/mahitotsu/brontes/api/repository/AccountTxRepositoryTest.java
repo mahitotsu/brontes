@@ -1,14 +1,14 @@
 package com.mahitotsu.brontes.api.repository;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,24 +107,68 @@ public class AccountTxRepositoryTest extends AbstractTestBase {
     }
 
     @Test
+    public void testLastCommittedAccountTx_NoTx() {
+
+        final Integer branchNumber = this.randomBranchNumber();
+        final Integer accuntNumber = this.randomAccountNumber();
+
+        final AccountTx lastCommittedTx = this.accountTxRepository
+                .findLastCommittedTransaction(branchNumber, accuntNumber).orElse(null);
+        assertNull(lastCommittedTx);
+    }
+
+    @Test
+    public void testFirstUncommittedAccountTx_NoTx() {
+
+        final Integer branchNumber = this.randomBranchNumber();
+        final Integer accuntNumber = this.randomAccountNumber();
+
+        final AccountTx firstUncommittedTx = this.txOperations.execute(tx -> this.accountTxRepository
+                .findUncommittedTransactions(branchNumber, accuntNumber, ZonedDateTime.now()).findFirst().orElse(null));
+        assertNull(firstUncommittedTx);
+    }
+
+    @Test
     public void testInsertNewEntity_Acceptable() {
 
         final Integer branchNumber = this.randomBranchNumber();
         final Integer accuntNumber = this.randomAccountNumber();
         final BigDecimal amount = this.randomAmount().abs();
 
+        // register initial entity
         final UUID txId = this.accountTxRepository
                 .save(AccountTx.newEntity(branchNumber, accuntNumber, amount)).getTxId();
         final AccountTx initialEntity = this.accountTxRepository.findById(txId).get();
 
+        // before commit the transaction
+        final AccountTx firstUncommittedTx = this.txOperations.execute(tx -> this.accountTxRepository
+                .findUncommittedTransactions(branchNumber, accuntNumber, ZonedDateTime.now()).findFirst().orElse(null));
+        assertNotNull(firstUncommittedTx);
+        assertEquals(initialEntity, firstUncommittedTx);
+
+        final AccountTx lastCommittedTx = this.accountTxRepository
+                .findLastCommittedTransaction(branchNumber, accuntNumber).orElse(null);
+        assertNull(lastCommittedTx);
+
+        // commit
         initialEntity.commit(null);
         this.accountTxRepository.save(initialEntity);
 
+        // after commit the transaction
         final AccountTx acceptedEntity = this.accountTxRepository.findById(txId).get();
         assertNotNull(acceptedEntity);
         assertEquals(TxStatus.ACCEPTED, acceptedEntity.getTxStatus());
         assertEquals(1, acceptedEntity.getTxSequence());
         assertEquals(acceptedEntity.getAmount(), acceptedEntity.getNewBalance());
+
+        final AccountTx firstUncommittedTx2 = this.txOperations.execute(tx -> this.accountTxRepository
+                .findUncommittedTransactions(branchNumber, accuntNumber, ZonedDateTime.now()).findFirst().orElse(null));
+        assertNull(firstUncommittedTx2);
+
+        final AccountTx lastCommittedTx2 = this.accountTxRepository
+                .findLastCommittedTransaction(branchNumber, accuntNumber).orElse(null);
+        assertNotNull(lastCommittedTx2);
+        assertEquals(acceptedEntity, lastCommittedTx2);
     }
 
     @Test
@@ -146,43 +190,10 @@ public class AccountTxRepositoryTest extends AbstractTestBase {
         assertEquals(TxStatus.REJECTED, rejectedEntity.getTxStatus());
         assertEquals(1, rejectedEntity.getTxSequence());
         assertEquals(new BigDecimal("0.00"), rejectedEntity.getNewBalance());
-    }
 
-    @SuppressWarnings("unused")
-    @Test
-    public void testCommitTransactions() {
-
-        final Integer branchNumber = this.randomBranchNumber();
-        final Integer accountNumber = this.randomAccountNumber();
-
-        final List<Integer> amounts = Arrays.asList(100, 200, -50, 100, -300, -100, 100);
-        this.accountTxRepository.saveAll(
-                amounts.stream().map(a -> AccountTx.newEntity(branchNumber, accountNumber, new BigDecimal(a)))
-                        .collect(Collectors.toList()));
-
-        final AccountTx lastEntity = this.txOperations.execute(tx -> AccountTx.commitTransactions(
-                null, this.accountTxRepository.findAllUncommittedTransactions(branchNumber, accountNumber,
-                        ZonedDateTime.now().plusDays(1))));
-        assertNotNull(lastEntity);
-        assertEquals(TxStatus.ACCEPTED, lastEntity.getTxStatus());
-        assertEquals(amounts.size(), lastEntity.getTxSequence());
-        assertEquals(new BigDecimal("150.00"), lastEntity.getNewBalance());
-
-        this.txOperations.executeWithoutResult(tx -> {
-            final List<AccountTx> txList = this.accountTxRepository
-                    .findAllCommittedTransactions(branchNumber, accountNumber, lastEntity.getTxTimestamp())
-                    .collect(Collectors.toList());
-            assertEquals(amounts.size(), txList.size());
-
-            final AccountTx rejectedTx = txList.get(5);
-            assertEquals(TxStatus.REJECTED, rejectedTx.getTxStatus());
-            assertEquals(6, rejectedTx.getTxSequence());
-            assertEquals(new BigDecimal("50.00"), rejectedTx.getNewBalance());
-            assertEquals(rejectedTx.getNewBalance(), txList.get(4).getNewBalance());
-        });
-
-        final AccountTx lastEntity2 = this.accountTxRepository
-                .findOneLastCommittedTransaction(branchNumber, accountNumber).get();
-        assertEquals(lastEntity, lastEntity2);
+        final AccountTx lastCommittedTx = this.accountTxRepository
+                .findLastCommittedTransaction(branchNumber, accuntNumber).orElse(null);
+        assertNotNull(lastCommittedTx);
+        assertEquals(rejectedEntity, lastCommittedTx);
     }
 }

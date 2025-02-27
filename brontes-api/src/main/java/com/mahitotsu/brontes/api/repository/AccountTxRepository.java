@@ -13,28 +13,12 @@ import com.mahitotsu.brontes.api.entity.AccountTx;
 public interface AccountTxRepository extends JpaRepository<AccountTx, UUID> {
 
     @Query("""
-            SELECT count(atx) > 0 FROM AccountTx atx
-            WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber
-                AND txSequence = 1 
-            """)
-    boolean existsByBranchNumberAndAccountNumber(Integer branchNumber, Integer accountNumber);
-
-    @Query("""
             SELECT atx FROM AccountTx atx
             WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber
                 AND txSequence IS NULL AND txTimestamp <= :txTimestamp
             ORDER BY txTimestamp
             """)
-    Stream<AccountTx> findAllUncommittedTransactions(Integer branchNumber, Integer accountNumber,
-            ZonedDateTime txTimestamp);
-
-    @Query("""
-            SELECT atx FROM AccountTx atx
-            WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber
-                AND txSequence IS NOT NULL AND txTimestamp <= :txTimestamp
-            ORDER BY txSequence
-            """)
-    Stream<AccountTx> findAllCommittedTransactions(Integer branchNumber, Integer accountNumber,
+    Stream<AccountTx> findUncommittedTransactions(Integer branchNumber, Integer accountNumber,
             ZonedDateTime txTimestamp);
 
     @Query("""
@@ -45,5 +29,5 @@ public interface AccountTxRepository extends JpaRepository<AccountTx, UUID> {
                 WHERE branchNumber = :branchNumber AND accountNumber = :accountNumber
             )
             """)
-    Optional<AccountTx> findOneLastCommittedTransaction(Integer branchNumber, Integer accountNumber);
+    Optional<AccountTx> findLastCommittedTransaction(Integer branchNumber, Integer accountNumber);
 }

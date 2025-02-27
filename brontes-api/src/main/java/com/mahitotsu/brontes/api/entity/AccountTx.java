@@ -3,7 +3,6 @@ package com.mahitotsu.brontes.api.entity;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,27 +34,6 @@ public class AccountTx {
         return entity;
     }
 
-    public static AccountTx commitTransactions(final AccountTx lastCommittedTx,
-            final Stream<AccountTx> uncommittedTxStream) {
-
-        if (uncommittedTxStream == null) {
-            return lastCommittedTx;
-        }
-
-        final AccountTx[] txArray = new AccountTx[2];
-        final int previous= 0;
-        final int next = 1;
-
-        txArray[previous] = lastCommittedTx;
-        uncommittedTxStream.forEach(tx -> {
-            txArray[next] = tx;
-            txArray[next].commit(txArray[previous]);
-            txArray[previous] = txArray[next];
-        });
-
-        return txArray[next];
-    }
-
     public static enum TxStatus {
         REGISTERED, ACCEPTED, REJECTED,
     }
@@ -71,7 +49,7 @@ public class AccountTx {
     @Column(name = "tx_timestamp", insertable = false, updatable = false)
     private ZonedDateTime txTimestamp;
 
-    @Column(name = "txStatus", insertable = false, updatable = true)
+    @Column(name = "tx_status", insertable = false, updatable = true)
     @Enumerated(EnumType.ORDINAL)
     private TxStatus txStatus;
 
@@ -103,7 +81,7 @@ public class AccountTx {
             throw new IllegalStateException("The specified previous transaction status is not committed.");
         } else {
             final BigDecimal newBalance = previousTx.getNewBalance().add(this.amount);
-            if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            if (newBalance.compareTo(BigDecimal.ZERO) < 0 || newBalance.precision() - newBalance.scale() > 13) {
                 this.txStatus = TxStatus.REJECTED;
                 this.txSequence = previousTx.getTxSequence() + 1;
                 this.newBalance = new BigDecimal(previousTx.getNewBalance().toString());

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -12,6 +13,7 @@ import com.mahitotsu.brontes.api.entity.AccountTx;
 import com.mahitotsu.brontes.api.entity.AccountTx.TxStatus;
 import com.mahitotsu.brontes.api.repository.AccountTxRepository;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
@@ -19,6 +21,7 @@ import jakarta.validation.constraints.Pattern;
 @Validated
 public class AccountTxOperations {
 
+    @Autowired
     private AccountTxRepository accountTxRepository;
 
     @Transactional(readOnly = true)
@@ -26,35 +29,33 @@ public class AccountTxOperations {
             @NotNull @Pattern(regexp = "^[0-9]{3}$") final String branchNumber,
             @NotNull @Pattern(regexp = "^[0-9]{7}$") final String accountNumber) {
 
-        return this.accountTxRepository.existsByBranchNumberAndAccountNumber(Integer.valueOf(branchNumber),
-                Integer.valueOf(accountNumber));
+        return this.accountTxRepository.findLastCommittedTransaction(Integer.valueOf(branchNumber),
+                Integer.valueOf(accountNumber)).orElse(null) != null;
     }
 
     @Transactional(readOnly = true)
-    public Integer getLastBalance(
+    public Long getLastBalance(
             @NotNull @Pattern(regexp = "^[0-9]{3}$") final String branchNumber,
             @NotNull @Pattern(regexp = "^[0-9]{7}$") final String accountNumber,
             final ZonedDateTime txTimestamp) {
 
-        return this.accountTxRepository.findOneLastCommittedTransaction(Integer.valueOf(branchNumber),
-                Integer.valueOf(accountNumber)).map(entity -> entity.getNewBalance().intValue()).orElse(null);
+        return this.accountTxRepository.findLastCommittedTransaction(Integer.valueOf(branchNumber),
+                Integer.valueOf(accountNumber)).map(entity -> entity.getNewBalance().longValue())
+                .orElse(null);
     }
 
     @Transactional
-    @DsqlRetry
-    public AccountTx registerAccountTx(
+    public UUID registerAccountTx(
             @NotNull @Pattern(regexp = "^[0-9]{3}$") final String branchNumber,
             @NotNull @Pattern(regexp = "^[0-9]{7}$") final String accountNumber,
-            final int amount) {
-
+            @Digits(integer = 13, fraction = 2) final long amount) {
         return this.accountTxRepository
-                .findById(this.accountTxRepository.save(AccountTx.newEntity(Integer.valueOf(branchNumber),
-                        Integer.valueOf(accountNumber), new BigDecimal(amount))).getTxId())
-                .orElseThrow(() -> new IllegalStateException("An unexpected situation has occurred."));
+                .save(AccountTx.newEntity(Integer.valueOf(branchNumber),
+                        Integer.valueOf(accountNumber), new BigDecimal(amount)))
+                .getTxId();
     }
 
     @Transactional
-    @DsqlRetry
     public AccountTx commitAccountTx(@NotNull final UUID txId) {
 
         final AccountTx entity = this.accountTxRepository.findById(txId).get();
@@ -64,19 +65,15 @@ public class AccountTxOperations {
 
         final Integer branchNumber = entity.getBranchNumber();
         final Integer accountNumber = entity.getAccountNumber();
-        AccountTx.commitTransactions(
-                this.accountTxRepository.findOneLastCommittedTransaction(branchNumber, accountNumber).orElse(null),
-                this.accountTxRepository.findAllUncommittedTransactions(branchNumber, accountNumber,
-                        entity.getTxTimestamp()));
 
-        return this.accountTxRepository.findById(txId).filter(atx -> atx.getTxStatus() != TxStatus.REGISTERED)
+        final AccountTx lastCommittedTx = this.accountTxRepository
+                .findLastCommittedTransaction(branchNumber, accountNumber).orElse(null);
+        final AccountTx firstUncommittedTx = this.accountTxRepository
+                .findUncommittedTransactions(branchNumber, accountNumber, entity.getTxTimestamp())
+                .findFirst()
                 .orElseThrow(() -> new IllegalStateException("An unexpected situation has occurred."));
-    }
 
-    @Transactional(readOnly = true)
-    public Integer regirievePastBalance(@NotNull final UUID txId) {
-
-        return this.accountTxRepository.findById(txId).filter(entity -> entity.getTxSequence() != null)
-                .map((entity -> entity.getNewBalance().intValue())).orElse(null);
+        firstUncommittedTx.commit(lastCommittedTx);
+        return firstUncommittedTx == entity ? entity : null;
     }
 }
