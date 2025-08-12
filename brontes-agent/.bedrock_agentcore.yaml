@@ -4,9 +4,9 @@ agents:
     name: brontes
     entrypoint: brontes.py
     platform: linux/arm64
-    container_runtime: none
+    container_runtime: docker
     aws:
-      execution_role: arn:aws:iam::346929044083:role/source /home/akring/brontes/brontes-agent/.venv/bin/activate
+      execution_role: null
       execution_role_auto_create: true
       account: '346929044083'
       region: us-east-1
@@ -21,10 +21,11 @@ agents:
     bedrock_agentcore:
       agent_id: null
       agent_arn: null
-      agent_session_id: null
+      agent_session_id: d127d7d0-8b57-49f5-826b-f5026f96d9ab
     codebuild:
       project_name: null
       execution_role: null
       source_bucket: null
     authorizer_configuration: null
-    oauth_configuration: null
+    oauth_configuration:
+      workload_name: workload-80227657
