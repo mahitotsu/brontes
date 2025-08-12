@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "agentcore-configure",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/agentcore",
+            "args": [
+                "configure",
+                "--entrypoint", "brontes.py",
+                "--region", "us-east-1",
+                "--requirements-file", "${workspaceFolder}/requirements.txt"
+            ],
+            "group": "build"
+        }
+    ]
+}
