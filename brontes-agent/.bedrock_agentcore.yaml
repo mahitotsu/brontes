@@ -6,12 +6,12 @@ agents:
     platform: linux/arm64
     container_runtime: docker
     aws:
-      execution_role: null
-      execution_role_auto_create: true
+      execution_role: arn:aws:iam::346929044083:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-d109ea29ea
+      execution_role_auto_create: false
       account: '346929044083'
       region: us-east-1
-      ecr_repository: null
-      ecr_auto_create: true
+      ecr_repository: 346929044083.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-brontes
+      ecr_auto_create: false
       network_configuration:
         network_mode: PUBLIC
       protocol_configuration:
@@ -19,13 +19,13 @@ agents:
       observability:
         enabled: true
     bedrock_agentcore:
-      agent_id: null
-      agent_arn: null
-      agent_session_id: d127d7d0-8b57-49f5-826b-f5026f96d9ab
+      agent_id: brontes-QBuDZF2r1u
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:346929044083:runtime/brontes-QBuDZF2r1u
+      agent_session_id: ed4d26d8-a0c5-4ad2-b7a4-08f8d40a2b26
     codebuild:
-      project_name: null
-      execution_role: null
-      source_bucket: null
+      project_name: bedrock-agentcore-brontes-builder
+      execution_role: arn:aws:iam::346929044083:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-d109ea29ea
+      source_bucket: bedrock-agentcore-codebuild-sources-346929044083-us-east-1
     authorizer_configuration: null
     oauth_configuration:
-      workload_name: workload-80227657
+      workload_name: workload-5028b698
