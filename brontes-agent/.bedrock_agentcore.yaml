@@ -21,7 +21,7 @@ agents:
     bedrock_agentcore:
       agent_id: brontes-QBuDZF2r1u
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:346929044083:runtime/brontes-QBuDZF2r1u
-      agent_session_id: ed4d26d8-a0c5-4ad2-b7a4-08f8d40a2b26
+      agent_session_id: 76e655a4-ec20-458e-9ddd-e634e4af720b
     codebuild:
       project_name: bedrock-agentcore-brontes-builder
       execution_role: arn:aws:iam::346929044083:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-d109ea29ea
